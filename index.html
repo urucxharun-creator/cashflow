@@ -413,11 +413,11 @@
       .sum-row { font-size: 11px; }
       .sum-value { font-size: 13px; }
       .sum-row span { max-width: 100%; }
-      .list { max-height: 220px; gap: 6px; }
-      .item { padding: 8px 10px; }
-      .item h4 { font-size: 13px; }
-      .item small { font-size: 10px; }
-      .amount { font-size: 13px; }
+      .list { max-height: 200px; gap: 6px; }
+      .item { padding: 6px 8px; }
+      .item h4 { font-size: 12px; }
+      .item small { font-size: 9px; }
+      .amount { font-size: 12px; }
     }
     .panel-title span {
       font-size: 12px;
@@ -533,6 +533,12 @@
       display: grid;
       gap: 8px;
     }
+    .payout-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: stretch;
+    }
     .payout-link {
       border: none;
       border-radius: 14px;
@@ -563,6 +569,22 @@
     }
     .payout-link:hover { transform: translateY(-1px); box-shadow: 0 16px 26px rgba(0, 112, 224, 0.2); }
     .payout-link:hover::before { transform: translateX(120%); }
+    .payout-delete {
+      border: 1px solid rgba(216, 91, 91, 0.38);
+      border-radius: 12px;
+      background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(255, 228, 228, 0.9));
+      color: var(--out-alert);
+      font-size: 12px;
+      font-weight: 800;
+      min-width: 76px;
+      padding: 0 10px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .payout-delete:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(216, 91, 91, 0.2);
+    }
     .payout-btn {
       border: none;
       border-radius: 14px;
@@ -1104,8 +1126,8 @@
 
     <section class="entry-zone mode-in" id="entryZone">
       <div class="mode-switch">
-        <button class="mode-btn active" data-mode="in" onclick="window.setMode && window.setMode('in')">Eingang</button>
-        <button class="mode-btn out" data-mode="out" onclick="window.setMode && window.setMode('out')">Ausgang</button>
+        <button class="mode-btn active" data-mode="in">Eingang</button>
+        <button class="mode-btn out" data-mode="out">Ausgang</button>
       </div>
 
       <form id="entryForm" class="entry-form" autocomplete="off" novalidate>
@@ -1116,7 +1138,7 @@
           <input id="openInput" type="checkbox" />
           <span>Offen (noch nicht bezahlt)</span>
         </label>
-        <button class="save-btn" type="button" id="saveEntryBtn" onclick="window.handleEntrySave && window.handleEntrySave()">Eintrag speichern</button>
+        <button class="save-btn" type="button" id="saveEntryBtn">Eintrag speichern</button>
       </form>
     </section>
 
@@ -1297,9 +1319,10 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     // SAFE MODE: minimal, robust local-only logic
-    window.SAFE_MODE = true;
+    window.SAFE_MODE = false;
   </script>
   <script>
     if (window.SAFE_MODE) {
@@ -1510,16 +1533,24 @@
     // Live-Sync aktiv
     const SUPABASE_URL = "https://nmmrwwsogmettxfjvrit.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_eHOrrq8jdzUTkatE3dMEcA_yZljinrY";
+    const DEFAULT_TEAM_CODE = "cashflow-live";
     const teamParam = new URLSearchParams(window.location.search).get("team");
-    const TEAM_CODE = teamParam || storage.get("cashflow_team") || "cashflow";
-    if (TEAM_CODE) storage.set("cashflow_team", TEAM_CODE);
+    const TEAM_CODE = teamParam || DEFAULT_TEAM_CODE;
+    storage.set("cashflow_team", TEAM_CODE);
     const CLIENT_ID = storage.get("cashflow_client") || (() => {
       const id = `c_${Math.random().toString(36).slice(2, 9)}`;
       storage.set("cashflow_client", id);
       return id;
     })();
-    const REMOTE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
-    const supabase = REMOTE_ENABLED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+    const REMOTE_ENABLED = Boolean(
+      SUPABASE_URL &&
+      SUPABASE_ANON_KEY &&
+      window.supabase &&
+      typeof window.supabase.createClient === "function"
+    );
+    const supabase = REMOTE_ENABLED
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
     let remoteReady = false;
     let isApplyingRemote = false;
     let lastNotifiedEventId = storage.get("cashflow_last_event") || "";
@@ -1530,11 +1561,7 @@
       lastEvent: null,
       periods: [],
       carryOver: 0,
-      transactions: [
-        { id: "t1", type: "in", name: "Kunde Yilmaz", amount: 1200, status: "paid", date: "2026-02-22", createdAt: "2026-02-22T09:30:00" },
-        { id: "t2", type: "in", name: "Kunde Schmidt", amount: 800, status: "open", date: "2026-02-22", createdAt: "2026-02-22T10:30:00" },
-        { id: "t3", type: "out", name: "Material", amount: 260, status: "done", date: "2026-02-21", createdAt: "2026-02-21T15:15:00" }
-      ]
+      transactions: []
     };
 
     const deepClone = typeof structuredClone === "function"
@@ -1589,6 +1616,7 @@
     const editTypeSwitch = document.getElementById("editTypeSwitch");
     const notesInput = document.getElementById("notesInput");
     const saveEntryBtn = document.getElementById("saveEntryBtn");
+    const supportsPointer = "PointerEvent" in window;
     const monthSelect = document.getElementById("monthSelect");
     const monthLabel = document.getElementById("monthLabel");
     const monthPie = document.getElementById("monthPie");
@@ -1720,6 +1748,22 @@
       if (typeof state.carryOver !== "number") state.carryOver = 0;
       if (typeof state.notes !== "string") state.notes = "";
       if (state.lastEvent && typeof state.lastEvent !== "object") state.lastEvent = null;
+      syncCarryOverFromPeriods();
+    }
+
+    function syncCarryOverFromPeriods() {
+      if (!Array.isArray(state.periods) || state.periods.length === 0) {
+        state.carryOver = 0;
+        return;
+      }
+      const toTimestamp = (period) => {
+        const dateValue = period.createdAt || period.date || "";
+        const timestamp = new Date(dateValue).getTime();
+        return Number.isFinite(timestamp) ? timestamp : 0;
+      };
+      const latestPeriod = [...state.periods].sort((a, b) => toTimestamp(a) - toTimestamp(b)).pop();
+      const nextCarryOver = Number(latestPeriod && latestPeriod.remaining);
+      state.carryOver = Number.isFinite(nextCarryOver) ? nextCarryOver : 0;
     }
 
     function parseAmount(value) {
@@ -1751,6 +1795,37 @@
       } catch (error) {
         return `${value.toFixed(2)} ${state.currency || "EUR"}`;
       }
+    }
+
+    function formatDateLabel(value, fallbackValue = "") {
+      const parseDate = (input) => {
+        if (!input) return null;
+        const raw = String(input).trim();
+        if (!raw) return null;
+
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoMatch) {
+          const year = Number(isoMatch[1]);
+          const month = Number(isoMatch[2]);
+          const day = Number(isoMatch[3]);
+          return new Date(year, month - 1, day);
+        }
+
+        const deMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+        if (deMatch) {
+          const day = Number(deMatch[1]);
+          const month = Number(deMatch[2]);
+          const year = Number(deMatch[3]);
+          return new Date(year, month - 1, day);
+        }
+
+        const parsed = new Date(raw);
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+        return null;
+      };
+
+      const date = parseDate(value) || parseDate(fallbackValue);
+      return date ? date.toLocaleDateString("de-DE") : "Ohne Datum";
     }
 
     function notifyEntry(entry) {
@@ -1919,13 +1994,16 @@
       }
       const periods = [...state.periods].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       payoutLinks.innerHTML = periods.map(period => {
-        const dateLabel = period.date ? new Date(period.date).toLocaleDateString("de-DE") : "";
+        const dateLabel = formatDateLabel(period.date, period.createdAt);
         return `
-          <button class="payout-link" data-id="${period.id}">
-            <strong>${dateLabel}</strong>
-            <span class="payout-out">Ausgeschüttet: ${formatMoney(period.payoutAmount)}</span>
-            <span class="payout-rest">Rest: ${formatMoney(period.remaining)}</span>
-          </button>
+          <div class="payout-row" data-id="${period.id}">
+            <button class="payout-link" type="button" data-id="${period.id}">
+              <strong>${dateLabel}</strong>
+              <span class="payout-out">Ausgeschüttet: ${formatMoney(period.payoutAmount)}</span>
+              <span class="payout-rest">Rest: ${formatMoney(period.remaining)}</span>
+            </button>
+            <button class="payout-delete" type="button" data-action="delete-payout" data-id="${period.id}" aria-label="Ausschüttung löschen">Löschen</button>
+          </div>
         `;
       }).join("");
     }
@@ -2280,7 +2358,7 @@
         createdAt: new Date().toISOString()
       };
       state.periods.push(period);
-      state.carryOver = period.remaining;
+      syncCarryOverFromPeriods();
       state.transactions = openIn;
       payoutAmount.value = "";
       payoutDate.value = new Date().toISOString().slice(0, 10);
@@ -2310,11 +2388,18 @@
     }
 
     [inList, outList].forEach(list => {
-      list.addEventListener("pointerdown", handlePressStart);
-      list.addEventListener("pointerup", handlePressEnd);
-      list.addEventListener("pointerleave", handlePressEnd);
-      list.addEventListener("pointermove", handlePressEnd);
-      list.addEventListener("pointercancel", handlePressEnd);
+      if (supportsPointer) {
+        list.addEventListener("pointerdown", handlePressStart);
+        list.addEventListener("pointerup", handlePressEnd);
+        list.addEventListener("pointerleave", handlePressEnd);
+        list.addEventListener("pointermove", handlePressEnd);
+        list.addEventListener("pointercancel", handlePressEnd);
+      } else {
+        list.addEventListener("touchstart", handlePressStart, { passive: true });
+        list.addEventListener("touchend", handlePressEnd);
+        list.addEventListener("touchmove", handlePressEnd);
+        list.addEventListener("touchcancel", handlePressEnd);
+      }
       list.addEventListener("change", (event) => {
         const box = event.target.closest(".select-box");
         if (!box) return;
@@ -2423,6 +2508,15 @@
     let payoutPressTimer = null;
     let payoutPressFired = false;
 
+    function deletePayoutPeriod(periodId) {
+      const index = state.periods.findIndex(p => p.id === periodId);
+      if (index === -1) return;
+      state.periods.splice(index, 1);
+      syncCarryOverFromPeriods();
+      saveState();
+      render();
+    }
+
     function clearPayoutPress() {
       if (payoutPressTimer) clearTimeout(payoutPressTimer);
       payoutPressTimer = null;
@@ -2438,11 +2532,7 @@
         const periodId = button.dataset.id;
         if (!periodId) return;
         if (!confirm("Gewinnausschüttung wirklich löschen?")) return;
-        const index = state.periods.findIndex(p => p.id === periodId);
-        if (index === -1) return;
-        state.periods.splice(index, 1);
-        saveState();
-        render();
+        deletePayoutPeriod(periodId);
       }, 500);
     }
 
@@ -2450,21 +2540,36 @@
       clearPayoutPress();
     }
 
-    payoutLinks.addEventListener("pointerdown", handlePayoutPressStart);
-    payoutLinks.addEventListener("pointerup", handlePayoutPressEnd);
-    payoutLinks.addEventListener("pointerleave", handlePayoutPressEnd);
-    payoutLinks.addEventListener("pointercancel", handlePayoutPressEnd);
+    if (supportsPointer) {
+      payoutLinks.addEventListener("pointerdown", handlePayoutPressStart);
+      payoutLinks.addEventListener("pointerup", handlePayoutPressEnd);
+      payoutLinks.addEventListener("pointerleave", handlePayoutPressEnd);
+      payoutLinks.addEventListener("pointercancel", handlePayoutPressEnd);
+    } else {
+      payoutLinks.addEventListener("touchstart", handlePayoutPressStart, { passive: true });
+      payoutLinks.addEventListener("touchend", handlePayoutPressEnd);
+      payoutLinks.addEventListener("touchmove", handlePayoutPressEnd);
+      payoutLinks.addEventListener("touchcancel", handlePayoutPressEnd);
+    }
 
     payoutLinks.addEventListener("click", (event) => {
       if (payoutPressFired) {
         payoutPressFired = false;
         return;
       }
+      const deleteButton = event.target.closest('[data-action="delete-payout"]');
+      if (deleteButton) {
+        const periodId = deleteButton.dataset.id;
+        if (!periodId) return;
+        if (!confirm("Gewinnausschüttung wirklich löschen?")) return;
+        deletePayoutPeriod(periodId);
+        return;
+      }
       const button = event.target.closest(".payout-link");
       if (!button) return;
       const period = state.periods.find(p => p.id === button.dataset.id);
       if (!period) return;
-      const dateLabel = period.date ? new Date(period.date).toLocaleDateString("de-DE") : "";
+      const dateLabel = formatDateLabel(period.date, period.createdAt);
       payoutMeta.innerHTML = `
         <div class="payout-summary">
           <div class="sum-block sum-before"><span>Saldo vorher</span><strong>${formatMoney(period.balanceBefore)}</strong></div>
