@@ -1292,6 +1292,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const storeKey = "kassa_notiz_v1";
     const storage = {
@@ -1305,9 +1306,9 @@
         try { localStorage.removeItem(key); } catch (e) {}
       }
     };
-    // Live-Sync deaktiviert (lokal stabil)
-    const SUPABASE_URL = "";
-    const SUPABASE_ANON_KEY = "";
+    // Live-Sync aktiv
+    const SUPABASE_URL = "https://nmmrwwsogmettxfjvrit.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_eHOrrq8jdzUTkatE3dMEcA_yZljinrY";
     const teamParam = new URLSearchParams(window.location.search).get("team");
     const TEAM_CODE = teamParam || storage.get("cashflow_team") || "cashflow";
     if (TEAM_CODE) storage.set("cashflow_team", TEAM_CODE);
@@ -1316,8 +1317,8 @@
       storage.set("cashflow_client", id);
       return id;
     })();
-    const REMOTE_ENABLED = false;
-    const supabase = null;
+    const REMOTE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+    const supabase = REMOTE_ENABLED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
     let remoteReady = false;
     let isApplyingRemote = false;
     let lastNotifiedEventId = storage.get("cashflow_last_event") || "";
