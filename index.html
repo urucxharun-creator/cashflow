@@ -1,0 +1,2443 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cashflow" />
+  <meta name="application-name" content="Cashflow" />
+  <meta name="theme-color" content="#e9eef6" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <title>Cashflow — Ledger</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;600;700;800&display=swap");
+    :root {
+      --bg: #f5f7fb;
+      --bg-2: #e9eef6;
+      --card: rgba(255, 255, 255, 0.96);
+      --ink: #001435;
+      --muted: #4a5c6a;
+      --accent: #0070e0;
+      --accent-2: #003087;
+      --accent-3: #7fb7ff;
+      --glow-green: rgba(0, 112, 224, 0.35);
+      --glow-orange: rgba(255, 159, 90, 0.35);
+      --line: rgba(0, 48, 135, 0.14);
+      --in-strong: #0070e0;
+      --out-strong: #ff9f5a;
+      --out-alert: #d85b5b;
+      --out-accent-light: #ffc9a1;
+      --shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+      --shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.08);
+      --radius: 20px;
+      --font-display: "Space Grotesk", "Sora", "Avenir Next", "Poppins", sans-serif;
+      --font-body: "Manrope", "Sora", "Avenir Next", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      color: var(--ink);
+      overflow-x: hidden;
+      touch-action: pan-y;
+      background:
+        radial-gradient(circle at 10% 15%, rgba(0, 112, 224, 0.18), transparent 45%),
+        radial-gradient(circle at 90% 0%, rgba(0, 48, 135, 0.18), transparent 40%),
+        radial-gradient(circle at 50% 100%, rgba(0, 161, 224, 0.2), transparent 55%),
+        linear-gradient(130deg, var(--bg) 0%, var(--bg-2) 60%, #ffffff 100%);
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      filter: blur(26px);
+      z-index: -1;
+      opacity: 0.6;
+      animation: float 12s ease-in-out infinite;
+    }
+    body::before {
+      right: -120px;
+      top: 80px;
+      background: radial-gradient(circle, rgba(0, 112, 224, 0.35), transparent 70%);
+    }
+    body::after {
+      left: -120px;
+      bottom: 40px;
+      background: radial-gradient(circle, rgba(0, 48, 135, 0.35), transparent 70%);
+      animation-delay: -6s;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(18px); }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4)); }
+      50% { filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.7)); }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+    h1, h2, h3 { margin: 0; font-family: var(--font-display); }
+    p { margin: 0; }
+    button, input, select { font-family: inherit; }
+
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 16px 32px;
+      display: grid;
+      gap: 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      background: linear-gradient(130deg, rgba(0, 112, 224, 0.22), rgba(0, 48, 135, 0.22));
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+    }
+    header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, rgba(255, 255, 255, 0.6), transparent 60%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    header > * { position: relative; z-index: 1; }
+    header h1 { font-size: 22px; letter-spacing: 0.3px; color: #0b1b22; }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 900;
+      background: linear-gradient(135deg, rgba(0, 112, 224, 0.9), rgba(0, 48, 135, 0.9));
+      box-shadow: 0 0 16px rgba(0, 112, 224, 0.35);
+    }
+    .brand-text {
+      font-size: 24px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+    }
+    .brand-text .cash {
+      color: var(--accent-2);
+    }
+    .brand-text .flow {
+      color: var(--accent);
+    }
+    header p { color: rgba(11, 27, 34, 0.7); font-size: 12px; }
+
+    .entry-zone {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.78));
+      border-radius: 24px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 14px;
+      justify-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .entry-zone::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: conic-gradient(from 0deg, rgba(0, 112, 224, 0.18), rgba(0, 48, 135, 0.18), rgba(0, 112, 224, 0.18));
+      opacity: 0.22;
+      animation: spin 18s linear infinite;
+      pointer-events: none;
+    }
+    .entry-zone::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 20%, rgba(0, 112, 224, 0.22), transparent 55%),
+        radial-gradient(circle at 80% 20%, rgba(0, 48, 135, 0.22), transparent 55%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .entry-zone > * { position: relative; z-index: 1; }
+    .entry-zone.mode-in { box-shadow: 0 24px 48px rgba(0, 112, 224, 0.22), var(--shadow); }
+    .entry-zone.mode-out { box-shadow: 0 24px 48px rgba(255, 159, 90, 0.22), var(--shadow); }
+    .entry-zone.saved { animation: pop 0.4s ease; }
+    .mode-switch {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .mode-btn {
+      border: none;
+      border-radius: 24px;
+      padding: 16px 18px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      color: #ffffff;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #6eb6ff);
+      box-shadow: 0 18px 30px rgba(0, 112, 224, 0.32);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+    }
+    .mode-btn.out {
+      background: linear-gradient(135deg, var(--out-strong), var(--out-accent-light));
+      box-shadow: 0 18px 30px rgba(255, 159, 90, 0.35);
+    }
+    .mode-btn.active {
+      outline: 2px solid rgba(255, 255, 255, 0.9);
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 0 18px var(--glow-green), 0 0 42px var(--glow-green);
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+      animation: pulseGlow 2.6s ease-in-out infinite;
+    }
+    .mode-btn.out.active {
+      box-shadow: 0 0 18px var(--glow-orange), 0 0 42px var(--glow-orange);
+    }
+    .mode-btn:active { transform: scale(0.98); }
+    .mode-btn:hover { transform: translateY(-2px); }
+
+
+    .entry-form {
+      width: 100%;
+      max-width: 480px;
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+    }
+    .giant-input {
+      width: min(100%, 380px);
+      border-radius: 18px;
+      border: 1px solid rgba(12, 30, 40, 0.12);
+      padding: 16px 18px;
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+      background: linear-gradient(160deg, #ffffff, #f4f8ff);
+      min-height: 58px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .giant-input.name {
+      font-size: 22px;
+      background: #eef5ff;
+      border-color: rgba(0, 112, 224, 0.4);
+    }
+    .amount-input {
+      width: min(100%, 260px);
+      min-height: 68px;
+      font-size: 26px;
+      margin-inline: auto;
+    }
+    .date-input {
+      width: min(100%, 220px);
+      min-height: 62px;
+      font-size: 18px;
+      text-align: center;
+      padding-right: 44px;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%230070e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" ry="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      margin-inline: auto;
+    }
+    .date-input::-webkit-calendar-picker-indicator {
+      opacity: 0;
+      cursor: pointer;
+    }
+    .date-input::-webkit-datetime-edit,
+    .date-input::-webkit-datetime-edit-fields-wrapper {
+      text-align: center;
+    }
+    .date-picker-input {
+      width: min(100%, 280px);
+      min-height: 68px;
+      font-size: 22px;
+      text-align: center;
+    }
+    input:focus {
+      outline: none;
+      border-color: rgba(0, 112, 224, 0.6);
+      box-shadow: 0 0 0 3px rgba(0, 112, 224, 0.22);
+    }
+    .row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .open-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--accent-2);
+      background: rgba(0, 112, 224, 0.12);
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 112, 224, 0.28);
+    }
+    .open-toggle input {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--accent-2);
+    }
+
+    .save-btn {
+      width: min(100%, 320px);
+      border: none;
+      border-radius: 18px;
+      padding: 16px 18px;
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      cursor: pointer;
+      background: linear-gradient(135deg, #003087, #0070e0);
+      box-shadow: 0 18px 32px rgba(0, 48, 135, 0.22);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .save-btn:hover { transform: translateY(-2px); box-shadow: 0 22px 36px rgba(0, 48, 135, 0.28); }
+    .entry-zone.mode-in .save-btn {
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      box-shadow: 0 0 22px var(--glow-green), 0 18px 32px rgba(0, 112, 224, 0.22);
+    }
+    .entry-zone.mode-out .save-btn {
+      background: linear-gradient(135deg, var(--out-strong), #ffd0a6);
+      box-shadow: 0 0 20px var(--glow-orange), 0 18px 32px rgba(255, 159, 90, 0.22);
+    }
+    .entry-zone.mode-out .save-btn:hover {
+      box-shadow: 0 22px 36px rgba(255, 159, 90, 0.32);
+    }
+
+    .split-lists {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.86));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card.card-in {
+      border: 1px solid rgba(0, 112, 224, 0.12);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 255, 0.96));
+    }
+    .card.card-out {
+      border: 1px solid rgba(255, 159, 90, 0.32);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 236, 220, 0.94));
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .panel-title h2 { font-size: 18px; }
+    .panel-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .select-btn {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 12px;
+      box-shadow: var(--shadow-soft);
+    }
+    .select-btn.danger {
+      border-color: rgba(216, 91, 91, 0.4);
+      color: var(--out-alert);
+      background: rgba(216, 91, 91, 0.08);
+    }
+    .select-btn.ghost {
+      border-color: rgba(0, 112, 224, 0.2);
+      color: var(--accent);
+      background: rgba(0, 112, 224, 0.06);
+    }
+
+    @media (max-width: 520px) {
+      .split-lists { gap: 10px; }
+      .card { padding: 10px; }
+      .panel-title { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .panel-title h2 { font-size: 16px; }
+      .panel-actions { gap: 4px; width: 100%; justify-content: flex-start; }
+      .select-btn { padding: 4px 6px; font-size: 10px; border-radius: 8px; }
+      .sum-row { font-size: 11px; }
+      .sum-value { font-size: 13px; }
+      .sum-row span { max-width: 100%; }
+    }
+    .panel-title span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .list {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      background: linear-gradient(160deg, #ffffff, #f8f8f8);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .item:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .item h4 { margin: 0; font-size: 14px; }
+    .item small { color: var(--muted); font-size: 11px; }
+    .amount {
+      font-weight: 700;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .amount-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    .select-box {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 6px 12px;
+      min-height: 34px;
+      border-radius: 999px;
+      background: rgba(255, 159, 90, 0.22);
+      color: #b24b19;
+      border: 1px solid rgba(255, 159, 90, 0.35);
+      cursor: pointer;
+    }
+    .tag.paid {
+      background: rgba(0, 112, 224, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(0, 112, 224, 0.2);
+    }
+    .sum-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(12, 30, 40, 0.08);
+      font-size: 13px;
+      font-weight: 700;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .sum-value {
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .sum-value.in { color: var(--accent); }
+    .sum-value.out { color: var(--out-strong); }
+
+    .payout-form {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+    .payout-form h4 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ink);
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+    }
+    .payout-history {
+      display: grid;
+      gap: 8px;
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 10px;
+      border-radius: 16px;
+      background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(229, 238, 252, 0.9));
+      border: 1px solid rgba(0, 112, 224, 0.2);
+      box-shadow: 0 14px 28px rgba(0, 112, 224, 0.12);
+    }
+    .payout-history h4 {
+      margin: 0;
+      font-size: 13px;
+      text-align: center;
+      letter-spacing: 0.4px;
+      color: var(--ink);
+      text-shadow: 0 0 12px var(--glow-green);
+    }
+    .payout-links {
+      display: grid;
+      gap: 8px;
+    }
+    .payout-link {
+      border: none;
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(230, 240, 255, 0.9));
+      border: 1px solid rgba(0, 112, 224, 0.2);
+      text-align: left;
+      cursor: pointer;
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 10px 18px rgba(0, 112, 224, 0.12);
+    }
+    .payout-link strong { color: var(--ink); font-size: 13px; }
+    .payout-link::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+      opacity: 0.45;
+      transform: translateX(-120%);
+      transition: transform 0.4s ease;
+      pointer-events: none;
+    }
+    .payout-link:hover { transform: translateY(-1px); box-shadow: 0 16px 26px rgba(0, 112, 224, 0.2); }
+    .payout-link:hover::before { transform: translateX(120%); }
+    .payout-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 18px 32px rgba(0, 112, 224, 0.35), 0 0 18px rgba(0, 112, 224, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .payout-btn:hover { transform: translateY(-1px); box-shadow: 0 22px 36px rgba(0, 112, 224, 0.4), 0 0 20px rgba(0, 112, 224, 0.45); }
+    .payout-meta {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .payout-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .payout-summary .sum-block {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      padding: 8px;
+      text-align: center;
+      border: 1px solid var(--line);
+    }
+    .payout-summary strong { display: block; font-size: 13px; color: var(--ink); }
+    .payout-summary .sum-before span,
+    .payout-summary .sum-before strong { color: var(--accent-2); }
+    .payout-summary .sum-out span,
+    .payout-summary .sum-out strong { color: var(--out-alert); }
+    .payout-summary .sum-rest span,
+    .payout-summary .sum-rest strong { color: var(--in-strong); }
+
+    .payout-link .payout-out { color: var(--out-alert); font-weight: 700; }
+    .payout-link .payout-rest { color: var(--in-strong); font-weight: 700; }
+
+    .saldo-section {
+      display: grid;
+      gap: 12px;
+    }
+    .saldo-card {
+      background: radial-gradient(circle at 20% 20%, rgba(0, 112, 224, 0.18), transparent 55%),
+        radial-gradient(circle at 80% 0%, rgba(0, 48, 135, 0.18), transparent 50%),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.82));
+      border-radius: 30px;
+      padding: 26px 22px;
+      border: 1.5px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 28px 60px rgba(0, 0, 0, 0.16),
+        0 0 32px rgba(0, 112, 224, 0.32),
+        0 0 28px rgba(0, 48, 135, 0.24);
+      display: grid;
+      gap: 12px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      max-width: 640px;
+      width: 100%;
+      margin: 0 auto;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .saldo-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 32px 68px rgba(0, 0, 0, 0.18),
+        0 0 36px rgba(0, 112, 224, 0.34),
+        0 0 30px rgba(0, 48, 135, 0.26);
+    }
+    .saldo-card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: conic-gradient(from 180deg, rgba(0, 112, 224, 0.18), rgba(0, 48, 135, 0.18), rgba(0, 112, 224, 0.18));
+      opacity: 0.35;
+      animation: spin 14s linear infinite;
+      pointer-events: none;
+    }
+    .saldo-card > * { position: relative; z-index: 1; }
+    .saldo-card h3 {
+      font-size: 22px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      text-shadow: 0 0 12px var(--glow-green);
+    }
+    .saldo-card .saldo-amount {
+      font-size: 66px;
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+      text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.8),
+        0 0 22px var(--glow-green),
+        0 0 18px rgba(0, 48, 135, 0.18);
+    }
+
+    .payout-section {
+      display: grid;
+      gap: 12px;
+    }
+    .payout-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(234, 241, 255, 0.92));
+      border-radius: 22px;
+      padding: 16px;
+      border: 1px solid rgba(0, 112, 224, 0.18);
+      box-shadow: var(--shadow-soft);
+      display: grid;
+      gap: 12px;
+      max-width: 620px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .saldo-details {
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .saldo-details strong { color: var(--ink); }
+    .saldo-details .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .saldo-breakdown {
+      display: grid;
+      gap: 8px;
+      max-height: 280px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .saldo-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      align-items: center;
+    }
+    .saldo-item h4 { margin: 0; font-size: 14px; color: var(--ink); }
+    .saldo-item small { color: var(--muted); font-size: 11px; }
+
+    .monthly-section {
+      display: grid;
+      gap: 12px;
+    }
+    .monthly-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(234, 241, 255, 0.92));
+      border-radius: 26px;
+      padding: 20px;
+      border: 1px solid rgba(0, 112, 224, 0.18);
+      box-shadow: 0 22px 44px rgba(0, 48, 135, 0.12);
+      display: grid;
+      gap: 18px;
+    }
+    .monthly-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .monthly-header h3 {
+      font-size: 22px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--accent-2);
+    }
+    .monthly-header p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .month-select {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 16px;
+      font-weight: 800;
+      font-size: 15px;
+      background: #ffffff;
+      color: var(--ink);
+      box-shadow: var(--shadow-soft);
+    }
+    .monthly-body {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+    .pie-wrap {
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+    .pie {
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      background: conic-gradient(var(--line) 0 100%);
+      position: relative;
+      box-shadow: inset 0 0 18px rgba(0, 48, 135, 0.08), 0 16px 30px rgba(0, 48, 135, 0.15);
+    }
+    .pie::after {
+      content: "";
+      position: absolute;
+      inset: 22px;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: inset 0 0 12px rgba(0, 48, 135, 0.08);
+    }
+    .pie-center {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      z-index: 1;
+    }
+    .pie-center span {
+      font-size: 12px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .pie-center strong {
+      font-size: 16px;
+      color: var(--accent-2);
+    }
+    .pie-empty {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .month-stats {
+      display: grid;
+      gap: 10px;
+    }
+    .month-stats .stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+    }
+    .month-stats .stat.in { border-left: 4px solid var(--in-strong); }
+    .month-stats .stat.out { border-left: 4px solid var(--out-strong); }
+    .month-stats .stat.open { border-left: 4px solid var(--accent-3); }
+    .month-stats .stat span { color: var(--muted); font-size: 13px; }
+    .month-stats .stat strong { font-size: 15px; color: var(--ink); }
+    .month-legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .month-legend .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .month-legend .dot.in { background: var(--in-strong); }
+    .month-legend .dot.out { background: var(--out-strong); }
+    .month-legend .dot.open { background: var(--accent-3); }
+
+    .notes-section {
+      display: grid;
+      gap: 12px;
+    }
+    .notes-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(234, 241, 255, 0.92));
+      border-radius: 22px;
+      padding: 18px;
+      border: 1px solid rgba(0, 112, 224, 0.18);
+      box-shadow: var(--shadow-soft);
+      display: grid;
+      gap: 12px;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .notes-card h3 {
+      font-size: 18px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin: 0;
+    }
+    .notes-card textarea {
+      width: 100%;
+      min-height: 140px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      font-size: 14px;
+      resize: vertical;
+      font-family: var(--font-body);
+      background: #ffffff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .notes-card textarea:focus {
+      outline: none;
+      border-color: rgba(0, 112, 224, 0.6);
+      box-shadow: 0 0 0 3px rgba(0, 112, 224, 0.18);
+    }
+
+    .edit-type-switch {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      justify-items: stretch;
+    }
+    .edit-type-btn {
+      border: none;
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      box-shadow: 0 12px 24px rgba(0, 112, 224, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .edit-type-btn.out {
+      background: linear-gradient(135deg, var(--out-strong), #ffd0a6);
+      box-shadow: 0 12px 24px rgba(255, 159, 90, 0.25);
+    }
+    .edit-type-btn.active {
+      outline: 2px solid rgba(255, 255, 255, 0.9);
+      transform: translateY(-1px) scale(1.01);
+    }
+    .edit-type-btn:active { transform: scale(0.98); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 32, 80, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 10;
+    }
+    .modal.active { display: flex; }
+    .modal-card {
+      background: linear-gradient(160deg, #ffffff, #eef3ff);
+      border-radius: 20px;
+      padding: 18px;
+      width: min(440px, 94vw);
+      border: 1px solid rgba(0, 112, 224, 0.18);
+      box-shadow: 0 24px 48px rgba(0, 48, 135, 0.18), 0 0 22px rgba(0, 112, 224, 0.2);
+      display: grid;
+      gap: 12px;
+    }
+    .modal-card.wide { width: min(560px, 94vw); }
+    #dateModal { z-index: 20; }
+    #dateModal .modal-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18),
+        0 0 22px rgba(0, 112, 224, 0.25),
+        0 0 22px rgba(0, 48, 135, 0.2);
+    }
+    .calendar-card {
+      width: min(560px, 96vw);
+      gap: 14px;
+    }
+    .calendar-header {
+      display: grid;
+      grid-template-columns: 48px 1fr 48px;
+      align-items: center;
+      gap: 12px;
+    }
+    .cal-title {
+      text-align: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: var(--accent-2);
+      text-transform: capitalize;
+    }
+    .cal-nav {
+      border: none;
+      border-radius: 14px;
+      height: 44px;
+      width: 48px;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 18px rgba(0, 112, 224, 0.25);
+    }
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .cal-day {
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+    }
+    .cal-day:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .cal-day.empty {
+      background: #f3f6fb;
+      border-style: dashed;
+      color: transparent;
+      cursor: default;
+      box-shadow: none;
+    }
+    .cal-day.today {
+      border-color: var(--accent-3);
+      box-shadow: 0 0 0 2px rgba(127, 183, 255, 0.25);
+    }
+    .cal-day.selected {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 12px 22px rgba(0, 112, 224, 0.25);
+    }
+    .calendar-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .modal-card h3 {
+      font-size: 18px;
+      color: var(--accent-2);
+      letter-spacing: 0.4px;
+    }
+    .modal-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .modal-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .modal-btn.save {
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      color: #ffffff;
+    }
+    .modal-btn.cancel {
+      background: #eef2f8;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .modal-btn.delete {
+      background: #ffefef;
+      color: #b42318;
+      border: 1px solid rgba(180, 35, 24, 0.25);
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .soft-btn {
+      border: 1px solid var(--line);
+      background: #eef2f8;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 9px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .soft-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+
+    @media (max-width: 920px) {
+      .row { grid-template-columns: 1fr; }
+      .mode-btn { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1 class="brand">
+          <span class="brand-icon">$</span>
+          <span class="brand-text">
+            <span class="cash">CA$H</span><span class="flow">FLOW</span>
+          </span>
+        </h1>
+        <p>Eintragen wie Zettel – schnell, klar, ohne Stress.</p>
+      </div>
+    </header>
+
+    <section class="entry-zone mode-in" id="entryZone">
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="in" onclick="window.setMode && window.setMode('in')">Eingang</button>
+        <button class="mode-btn out" data-mode="out" onclick="window.setMode && window.setMode('out')">Ausgang</button>
+      </div>
+
+      <form id="entryForm" class="entry-form" autocomplete="off" novalidate>
+        <input id="nameInput" class="giant-input name" placeholder="Name / Kunde" required />
+        <input id="amountInput" class="giant-input amount-input" placeholder="0,00" required inputmode="decimal" />
+        <input id="dateInput" class="giant-input date-input" type="date" />
+        <label class="open-toggle" id="openWrap">
+          <input id="openInput" type="checkbox" />
+          <span>Offen (noch nicht bezahlt)</span>
+        </label>
+        <button class="save-btn" type="button" id="saveEntryBtn" onclick="window.handleEntrySave && window.handleEntrySave()">Eintrag speichern</button>
+      </form>
+    </section>
+
+    <section class="split-lists">
+      <div class="card card-in">
+        <div class="panel-title">
+          <h2>Eingänge</h2>
+          <div class="panel-actions" data-list="in">
+            <button class="select-btn" data-action="toggle-select" data-list="in" type="button">Auswählen</button>
+            <button class="select-btn ghost" data-action="select-all" data-list="in" type="button" hidden>Alle</button>
+            <button class="select-btn danger" data-action="delete-selected" data-list="in" type="button" hidden>Löschen</button>
+          </div>
+        </div>
+        <div class="list" id="inList" data-list="in"></div>
+        <div class="sum-row">
+          <span>Summe Eingang (bezahlt)</span>
+          <span class="sum-value in" id="sumIn">0</span>
+        </div>
+      </div>
+
+      <div class="card card-out">
+        <div class="panel-title">
+          <h2>Ausgänge</h2>
+          <div class="panel-actions" data-list="out">
+            <button class="select-btn" data-action="toggle-select" data-list="out" type="button">Auswählen</button>
+            <button class="select-btn ghost" data-action="select-all" data-list="out" type="button" hidden>Alle</button>
+            <button class="select-btn danger" data-action="delete-selected" data-list="out" type="button" hidden>Löschen</button>
+          </div>
+        </div>
+        <div class="list" id="outList" data-list="out"></div>
+        <div class="sum-row">
+          <span>Summe Ausgang</span>
+          <span class="sum-value out" id="sumOut">0</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="saldo-section">
+      <div class="saldo-card">
+        <h3>Saldo insgesamt</h3>
+        <div class="saldo-amount" id="saldoBig">0</div>
+      </div>
+    </section>
+
+    <section class="payout-section">
+      <div class="payout-card">
+        <form class="payout-form" id="payoutForm" autocomplete="off">
+          <h4>Gewinnausschüttung</h4>
+          <input id="payoutAmount" class="giant-input amount-input" placeholder="Betrag" inputmode="decimal" />
+          <input id="payoutDate" class="giant-input date-input" type="date" />
+          <button class="payout-btn" id="payoutSave" type="submit">Ausschüttung speichern</button>
+        </form>
+        <div class="payout-history">
+          <h4>Ausschüttungen (Archiv)</h4>
+          <div class="payout-links" id="payoutLinks"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-actions">
+      <button class="soft-btn" id="exportBtn" type="button">CSV Export</button>
+    </div>
+
+    <section class="monthly-section">
+      <div class="monthly-card">
+        <div class="monthly-header">
+          <div>
+            <h3>Monatsübersicht</h3>
+            <p id="monthLabel">–</p>
+          </div>
+          <select id="monthSelect" class="month-select"></select>
+        </div>
+        <div class="monthly-body">
+          <div class="pie-wrap">
+            <div class="pie" id="monthPie">
+              <div class="pie-center">
+                <span>Gesamt</span>
+                <strong id="monthTotal">0</strong>
+              </div>
+            </div>
+            <div class="pie-empty" id="monthEmpty">Keine Daten</div>
+          </div>
+          <div class="month-stats">
+            <div class="stat in">
+              <span>Eingang (bezahlt)</span>
+              <strong id="monthIn">0</strong>
+            </div>
+            <div class="stat out">
+              <span>Ausgang</span>
+              <strong id="monthOut">0</strong>
+            </div>
+            <div class="stat open">
+              <span>Offen</span>
+              <strong id="monthOpen">0</strong>
+            </div>
+          </div>
+        </div>
+        <div class="month-legend">
+          <span><i class="dot in"></i>Eingang</span>
+          <span><i class="dot out"></i>Ausgang</span>
+          <span><i class="dot open"></i>Offen</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes-section">
+      <div class="notes-card">
+        <h3>Anmerkungen</h3>
+        <textarea id="notesInput" placeholder="Notizen, Absprachen, offene Punkte..."></textarea>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="editModal">
+    <div class="modal-card">
+      <h3>Eintrag bearbeiten</h3>
+      <div class="edit-type-switch" id="editTypeSwitch">
+        <button type="button" class="edit-type-btn" data-value="in">Eingang</button>
+        <button type="button" class="edit-type-btn out" data-value="out">Ausgang</button>
+      </div>
+      <select id="editType" class="sr-only" aria-hidden="true">
+        <option value="in">Eingang</option>
+        <option value="out">Ausgang</option>
+      </select>
+      <input id="editName" class="giant-input name" placeholder="Name" />
+      <input id="editAmount" class="giant-input amount-input" placeholder="0,00" inputmode="decimal" />
+      <input id="editDate" class="giant-input date-input" type="date" />
+      <label class="open-toggle" id="editOpenWrap">
+        <input id="editOpen" type="checkbox" />
+        <span>Offen (noch nicht bezahlt)</span>
+      </label>
+      <div class="modal-actions">
+        <button class="modal-btn delete" id="editDelete">Löschen</button>
+        <button class="modal-btn cancel" id="editCancel">Abbrechen</button>
+        <button class="modal-btn save" id="editSave">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="payoutModal">
+    <div class="modal-card wide">
+      <h3>Ausschüttung Details</h3>
+      <div class="payout-meta" id="payoutMeta"></div>
+      <div class="list" id="payoutTxList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="payoutClose">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="saldoModal">
+    <div class="modal-card wide">
+      <h3>Saldo Details</h3>
+      <div class="saldo-details" id="saldoDetails"></div>
+      <div class="saldo-breakdown" id="saldoBreakdown"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="saldoClose">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dateModal">
+    <div class="modal-card calendar-card">
+      <div class="calendar-header">
+        <button class="cal-nav" id="calPrev" type="button">‹</button>
+        <div class="cal-title" id="calTitle">–</div>
+        <button class="cal-nav" id="calNext" type="button">›</button>
+      </div>
+      <div class="cal-weekdays">
+        <span>MO</span><span>DI</span><span>MI</span><span>DO</span><span>FR</span><span>SA</span><span>SO</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="calendar-actions">
+        <button class="modal-btn cancel" id="dateToday" type="button">Heute</button>
+        <button class="modal-btn cancel" id="dateClear" type="button">Leeren</button>
+        <button class="modal-btn save" id="dateOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const storeKey = "kassa_notiz_v1";
+    const storage = {
+      get(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+      },
+      set(key, value) {
+        try { localStorage.setItem(key, value); } catch (e) {}
+      },
+      remove(key) {
+        try { localStorage.removeItem(key); } catch (e) {}
+      }
+    };
+    // Live-Sync deaktiviert (lokal stabil)
+    const SUPABASE_URL = "";
+    const SUPABASE_ANON_KEY = "";
+    const teamParam = new URLSearchParams(window.location.search).get("team");
+    const TEAM_CODE = teamParam || storage.get("cashflow_team") || "cashflow";
+    if (TEAM_CODE) storage.set("cashflow_team", TEAM_CODE);
+    const CLIENT_ID = storage.get("cashflow_client") || (() => {
+      const id = `c_${Math.random().toString(36).slice(2, 9)}`;
+      storage.set("cashflow_client", id);
+      return id;
+    })();
+    const REMOTE_ENABLED = false;
+    const supabase = null;
+    let remoteReady = false;
+    let isApplyingRemote = false;
+    let lastNotifiedEventId = storage.get("cashflow_last_event") || "";
+
+    const defaultState = {
+      currency: "EUR",
+      notes: "",
+      lastEvent: null,
+      periods: [],
+      carryOver: 0,
+      transactions: [
+        { id: "t1", type: "in", name: "Kunde Yilmaz", amount: 1200, status: "paid", date: "2026-02-22", createdAt: "2026-02-22T09:30:00" },
+        { id: "t2", type: "in", name: "Kunde Schmidt", amount: 800, status: "open", date: "2026-02-22", createdAt: "2026-02-22T10:30:00" },
+        { id: "t3", type: "out", name: "Material", amount: 260, status: "done", date: "2026-02-21", createdAt: "2026-02-21T15:15:00" }
+      ]
+    };
+
+    const deepClone = typeof structuredClone === "function"
+      ? structuredClone
+      : (value) => JSON.parse(JSON.stringify(value));
+
+    let state = loadState();
+
+    const entryZone = document.getElementById("entryZone");
+    const entryForm = document.getElementById("entryForm");
+    const nameInput = document.getElementById("nameInput");
+    const amountInput = document.getElementById("amountInput");
+    const dateInput = document.getElementById("dateInput");
+    const openInput = document.getElementById("openInput");
+    const openWrap = document.getElementById("openWrap");
+    const inList = document.getElementById("inList");
+    const outList = document.getElementById("outList");
+    const sumInEl = document.getElementById("sumIn");
+    const sumOutEl = document.getElementById("sumOut");
+    const saldoBig = document.getElementById("saldoBig");
+    const payoutAmount = document.getElementById("payoutAmount");
+    const payoutDate = document.getElementById("payoutDate");
+    const payoutForm = document.getElementById("payoutForm");
+    const payoutLinks = document.getElementById("payoutLinks");
+    const payoutModal = document.getElementById("payoutModal");
+    const payoutMeta = document.getElementById("payoutMeta");
+    const payoutTxList = document.getElementById("payoutTxList");
+    const payoutClose = document.getElementById("payoutClose");
+    const saldoModal = document.getElementById("saldoModal");
+    const saldoDetails = document.getElementById("saldoDetails");
+    const saldoBreakdown = document.getElementById("saldoBreakdown");
+    const saldoClose = document.getElementById("saldoClose");
+    const dateModal = document.getElementById("dateModal");
+    const calTitle = document.getElementById("calTitle");
+    const calGrid = document.getElementById("calGrid");
+    const calPrev = document.getElementById("calPrev");
+    const calNext = document.getElementById("calNext");
+    const dateToday = document.getElementById("dateToday");
+    const dateClear = document.getElementById("dateClear");
+    const dateOk = document.getElementById("dateOk");
+    const modeButtons = document.querySelectorAll(".mode-btn");
+    const editModal = document.getElementById("editModal");
+    const editType = document.getElementById("editType");
+    const editName = document.getElementById("editName");
+    const editAmount = document.getElementById("editAmount");
+    const editDate = document.getElementById("editDate");
+    const editOpen = document.getElementById("editOpen");
+    const editOpenWrap = document.getElementById("editOpenWrap");
+    const editDelete = document.getElementById("editDelete");
+    const editCancel = document.getElementById("editCancel");
+    const editSave = document.getElementById("editSave");
+    const editTypeSwitch = document.getElementById("editTypeSwitch");
+    const notesInput = document.getElementById("notesInput");
+    const saveEntryBtn = document.getElementById("saveEntryBtn");
+    const monthSelect = document.getElementById("monthSelect");
+    const monthLabel = document.getElementById("monthLabel");
+    const monthPie = document.getElementById("monthPie");
+    const monthTotal = document.getElementById("monthTotal");
+    const monthInEl = document.getElementById("monthIn");
+    const monthOutEl = document.getElementById("monthOut");
+    const monthOpenEl = document.getElementById("monthOpen");
+    const monthEmpty = document.getElementById("monthEmpty");
+
+    const ui = { mode: "in" };
+    let editingId = null;
+    let selectedMonthKey = "";
+    const selection = {
+      in: { active: false, ids: new Set() },
+      out: { active: false, ids: new Set() }
+    };
+
+    let audioCtx = null;
+    let activeDateTarget = null;
+    const calendarState = { year: 0, month: 0, selected: "", original: "" };
+
+    const ENABLE_SW = false;
+    if (!ENABLE_SW && "serviceWorker" in navigator) {
+      try {
+        if (navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then((regs) => {
+            regs.forEach((reg) => reg.unregister());
+          }).catch(() => {});
+        } else if (navigator.serviceWorker.getRegistration) {
+          navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg) reg.unregister();
+          }).catch(() => {});
+        }
+        if ("caches" in window) {
+          caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
+        }
+      } catch (e) {
+        // ignore SW cleanup errors
+      }
+    }
+    if (ENABLE_SW && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+
+    if (notesInput) {
+      notesInput.value = state.notes || "";
+      notesInput.addEventListener("input", () => {
+        state.notes = notesInput.value;
+        saveState();
+      });
+    }
+
+    function playCashSound(type) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const master = audioCtx.createGain();
+        master.gain.setValueAtTime(0.14, now);
+        master.connect(audioCtx.destination);
+
+        const makeTone = (freq, start, duration) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.6, start + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+          osc.connect(gain);
+          gain.connect(master);
+          osc.start(start);
+          osc.stop(start + duration);
+        };
+
+        if (type === "in") {
+          makeTone(1200, now, 0.08);
+          makeTone(1650, now + 0.09, 0.1);
+        } else {
+          makeTone(520, now, 0.1);
+          makeTone(320, now + 0.1, 0.12);
+        }
+      } catch (error) {
+        // ignore audio errors
+      }
+    }
+
+    if (monthSelect) {
+      monthSelect.addEventListener("change", () => {
+        selectedMonthKey = monthSelect.value;
+        renderMonthly();
+      });
+    }
+
+    function loadState() {
+      const stored = storage.get(storeKey);
+      const notesFallback = storage.get("cashflow_notes");
+      if (!stored) {
+        const base = deepClone(defaultState);
+        if (notesFallback) base.notes = notesFallback;
+        return base;
+      }
+      try {
+        const parsed = JSON.parse(stored);
+        const merged = { ...deepClone(defaultState), ...parsed };
+        if (!merged.notes && notesFallback) merged.notes = notesFallback;
+        return merged;
+      } catch (error) {
+        const base = deepClone(defaultState);
+        if (notesFallback) base.notes = notesFallback;
+        return base;
+      }
+    }
+
+    let remoteSyncTimer = null;
+    function saveState({ skipRemote = false } = {}) {
+      storage.set(storeKey, JSON.stringify(state));
+      storage.set("cashflow_notes", state.notes || "");
+      if (!skipRemote) scheduleRemoteSync();
+    }
+
+    function normalizeState() {
+      if (!Array.isArray(state.transactions)) state.transactions = [];
+      if (!Array.isArray(state.periods)) state.periods = [];
+      if (typeof state.carryOver !== "number") state.carryOver = 0;
+      if (typeof state.notes !== "string") state.notes = "";
+      if (state.lastEvent && typeof state.lastEvent !== "object") state.lastEvent = null;
+    }
+
+    function parseAmount(value) {
+      if (!value) return 0;
+      const cleaned = value.toString().replace(/\./g, "").replace(/,/g, ".");
+      const num = Number.parseFloat(cleaned);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function formatMoney(value) {
+      try {
+        return new Intl.NumberFormat("de-DE", {
+          style: "currency",
+          currency: state.currency || "EUR"
+        }).format(value);
+      } catch (error) {
+        return `${value.toFixed(2)} ${state.currency || "EUR"}`;
+      }
+    }
+
+    function notifyEntry(entry) {
+      if (!("Notification" in window)) return;
+      if (!entry) return;
+      const title = entry.type === "in" ? "Eingang gebucht" : "Ausgang gebucht";
+      const body = `${entry.name}: ${formatMoney(entry.amount)}`;
+      const show = () => {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, { body, icon: "icon.svg", badge: "icon.svg" });
+          }).catch(() => {});
+        } else {
+          try {
+            new Notification(title, { body, icon: "icon.svg" });
+          } catch (error) {
+            // ignore notification errors
+          }
+        }
+      };
+      if (Notification.permission === "granted") {
+        show();
+      } else if (Notification.permission === "default") {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") show();
+        }).catch(() => {});
+      }
+    }
+
+    function scheduleRemoteSync() {
+      if (!REMOTE_ENABLED || !supabase || !remoteReady || isApplyingRemote) return;
+      clearTimeout(remoteSyncTimer);
+      remoteSyncTimer = setTimeout(syncRemoteState, 250);
+    }
+
+    async function syncRemoteState() {
+      if (!REMOTE_ENABLED || !supabase || !remoteReady || isApplyingRemote) return;
+      try {
+        await supabase.from("cashflow_states").upsert({
+          team: TEAM_CODE,
+          data: state,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "team" });
+      } catch (error) {
+        // ignore sync errors
+      }
+    }
+
+    function applyRemoteState(data) {
+      isApplyingRemote = true;
+      state = { ...deepClone(defaultState), ...data };
+      normalizeState();
+      if (notesInput) notesInput.value = state.notes || "";
+      isApplyingRemote = false;
+      render();
+    }
+
+    function maybeNotifyRemote(lastEvent) {
+      if (!lastEvent || !lastEvent.id) return;
+      if (lastEvent.sourceId === CLIENT_ID) return;
+      if (lastNotifiedEventId === lastEvent.id) return;
+      lastNotifiedEventId = lastEvent.id;
+      storage.set("cashflow_last_event", lastNotifiedEventId);
+      notifyEntry(lastEvent);
+    }
+
+    function subscribeRemote() {
+      if (!supabase) return;
+      supabase.channel(`cashflow-${TEAM_CODE}`)
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "cashflow_states",
+          filter: `team=eq.${TEAM_CODE}`
+        }, (payload) => {
+          if (!payload || !payload.new || !payload.new.data) return;
+          const incoming = payload.new.data;
+          if (incoming && incoming.lastEvent && incoming.lastEvent.sourceId === CLIENT_ID && state && state.lastEvent && incoming.lastEvent.id === state.lastEvent.id) {
+            return;
+          }
+          applyRemoteState(incoming);
+          maybeNotifyRemote(incoming.lastEvent);
+        })
+        .subscribe();
+    }
+
+    async function initRemote() {
+      if (!supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from("cashflow_states")
+          .select("data")
+          .eq("team", TEAM_CODE)
+          .single();
+        if (data && data.data) {
+          applyRemoteState(data.data);
+        } else if (!error || error.code === "PGRST116") {
+          await supabase.from("cashflow_states").upsert({
+            team: TEAM_CODE,
+            data: state,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "team" });
+        }
+        remoteReady = true;
+        subscribeRemote();
+      } catch (error) {
+        // ignore init errors
+      }
+    }
+
+    function createId(prefix) {
+      return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
+    }
+
+    function sortedTransactions() {
+      return [...state.transactions].sort((a, b) => {
+        const aDate = new Date(a.createdAt || `${a.date}T00:00:00`);
+        const bDate = new Date(b.createdAt || `${b.date}T00:00:00`);
+        return bDate - aDate;
+      });
+    }
+
+    function pruneSelection(type, ids) {
+      const valid = new Set(ids);
+      selection[type].ids.forEach((id) => {
+        if (!valid.has(id)) selection[type].ids.delete(id);
+      });
+    }
+
+    function renderList(type, target) {
+      const items = sortedTransactions().filter(tx => tx.type === type);
+      const isSelecting = selection[type].active;
+      pruneSelection(type, items.map(tx => tx.id));
+      target.innerHTML = items.map(tx => {
+        const dateLabel = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
+        const openTag = type === "in"
+          ? `<button class="tag ${tx.status === "open" ? "" : "paid"}" data-action="toggle-open" data-id="${tx.id}">${tx.status === "open" ? "Offen" : "Bezahlt"}</button>`
+          : "";
+        const checkbox = isSelecting
+          ? `<input class="select-box" type="checkbox" data-id="${tx.id}" ${selection[type].ids.has(tx.id) ? "checked" : ""} />`
+          : "";
+        return `
+          <div class="item" data-id="${tx.id}">
+            <div style="display:flex; gap:10px; align-items:center;">
+              ${checkbox}
+              <div>
+                <h4>${tx.name}</h4>
+                <small>${dateLabel}</small>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div class="amount-row">
+                ${openTag}
+                <div class="amount">${formatMoney(tx.amount)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("") || `<p style="color: var(--muted); font-size: 12px;">Noch keine Eintraege.</p>`;
+    }
+
+    function renderPayouts() {
+      if (!state.periods || state.periods.length === 0) {
+        payoutLinks.innerHTML = `<span style="color: var(--muted); font-size: 12px;">Noch keine Gewinnausschüttung.</span>`;
+        return;
+      }
+      const periods = [...state.periods].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      payoutLinks.innerHTML = periods.map(period => {
+        const dateLabel = period.date ? new Date(period.date).toLocaleDateString("de-DE") : "";
+        return `
+          <button class="payout-link" data-id="${period.id}">
+            <strong>${dateLabel}</strong>
+            <span class="payout-out">Ausgeschüttet: ${formatMoney(period.payoutAmount)}</span>
+            <span class="payout-rest">Rest: ${formatMoney(period.remaining)}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function updateSums() {
+      const sumInPaid = state.transactions
+        .filter(tx => tx.type === "in" && tx.status !== "open")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const sumOut = state.transactions
+        .filter(tx => tx.type === "out")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const balance = state.carryOver + sumInPaid - sumOut;
+      sumInEl.textContent = formatMoney(sumInPaid);
+      sumOutEl.textContent = formatMoney(sumOut);
+      saldoBig.textContent = formatMoney(balance);
+      renderPayouts();
+    }
+
+    function openSaldoDetails() {
+      const paidIn = state.transactions.filter(tx => tx.type === "in" && tx.status !== "open");
+      const openIn = state.transactions.filter(tx => tx.type === "in" && tx.status === "open");
+      const outTx = state.transactions.filter(tx => tx.type === "out");
+      const sumInPaid = paidIn.reduce((sum, tx) => sum + tx.amount, 0);
+      const sumOut = outTx.reduce((sum, tx) => sum + tx.amount, 0);
+      const sumOpen = openIn.reduce((sum, tx) => sum + tx.amount, 0);
+      const balance = state.carryOver + sumInPaid - sumOut;
+
+      const byCustomer = paidIn.reduce((map, tx) => {
+        const key = (tx.name || "Unbekannt").trim();
+        if (!map[key]) map[key] = { name: key, amount: 0, count: 0 };
+        map[key].amount += tx.amount;
+        map[key].count += 1;
+        return map;
+      }, {});
+      const customers = Object.values(byCustomer).sort((a, b) => b.amount - a.amount);
+
+      saldoDetails.innerHTML = `
+        <div class="row"><span>Rest aus letzter Ausschüttung</span><strong>${formatMoney(state.carryOver)}</strong></div>
+        <div class="row"><span>Summe Eingang (bezahlt)</span><strong>${formatMoney(sumInPaid)}</strong></div>
+        <div class="row"><span>Summe Ausgang</span><strong>${formatMoney(sumOut)}</strong></div>
+        <div class="row"><span>Offen (nicht im Saldo)</span><strong>${formatMoney(sumOpen)}</strong></div>
+        <div class="row"><span>Saldo insgesamt</span><strong>${formatMoney(balance)}</strong></div>
+      `;
+
+      saldoBreakdown.innerHTML = customers.map(c => `
+        <div class="saldo-item">
+          <div>
+            <h4>${c.name}</h4>
+            <small>${c.count} Eintrag${c.count === 1 ? "" : "e"} bezahlt</small>
+          </div>
+          <div class="amount">${formatMoney(c.amount)}</div>
+        </div>
+      `).join("") || `<p style="color: var(--muted); font-size: 12px;">Keine bezahlten Eingänge.</p>`;
+
+      saldoModal.classList.add("active");
+    }
+
+    function getMonthKey(dateStr) {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (Number.isNaN(date.getTime())) return "";
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      return `${date.getFullYear()}-${month}`;
+    }
+
+    function formatMonthLabel(key) {
+      if (!key) return "";
+      const [year, month] = key.split("-").map(Number);
+      const date = new Date(year, (month || 1) - 1, 1);
+      return new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" }).format(date);
+    }
+
+    function buildMonthList() {
+      const set = new Set();
+      state.transactions.forEach(tx => {
+        const key = getMonthKey(tx.date);
+        if (key) set.add(key);
+      });
+      const now = new Date();
+      const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      if (set.size === 0) set.add(currentKey);
+      return [...set].sort((a, b) => b.localeCompare(a));
+    }
+
+    function renderMonthly() {
+      if (!monthSelect) return;
+      const months = buildMonthList();
+      if (!selectedMonthKey || !months.includes(selectedMonthKey)) {
+        selectedMonthKey = months[0];
+      }
+      monthSelect.innerHTML = months
+        .map(key => `<option value="${key}">${formatMonthLabel(key)}</option>`)
+        .join("");
+      monthSelect.value = selectedMonthKey;
+      monthLabel.textContent = formatMonthLabel(selectedMonthKey);
+
+      const monthTx = state.transactions.filter(tx => getMonthKey(tx.date) === selectedMonthKey);
+      const paidIn = monthTx
+        .filter(tx => tx.type === "in" && tx.status !== "open")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const out = monthTx
+        .filter(tx => tx.type === "out")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const open = monthTx
+        .filter(tx => tx.type === "in" && tx.status === "open")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      monthInEl.textContent = formatMoney(paidIn);
+      monthOutEl.textContent = formatMoney(out);
+      monthOpenEl.textContent = formatMoney(open);
+
+      const total = paidIn + out + open;
+      monthTotal.textContent = formatMoney(total);
+      if (total <= 0) {
+        monthPie.style.background = "conic-gradient(var(--line) 0 100%)";
+        monthEmpty.style.display = "block";
+        return;
+      }
+      monthEmpty.style.display = "none";
+      const pctIn = (paidIn / total) * 100;
+      const pctOut = (out / total) * 100;
+      const stopIn = pctIn;
+      const stopOut = pctIn + pctOut;
+      monthPie.style.background = `conic-gradient(
+        var(--in-strong) 0 ${stopIn}%,
+        var(--out-strong) ${stopIn}% ${stopOut}%,
+        var(--accent-3) ${stopOut}% 100%
+      )`;
+    }
+
+    function render() {
+      renderList("in", inList);
+      renderList("out", outList);
+      updateSums();
+      renderMonthly();
+      updateSelectionControls();
+    }
+
+    function applyMode() {
+      modeButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === ui.mode));
+      openWrap.style.display = ui.mode === "in" ? "inline-flex" : "none";
+      nameInput.placeholder = ui.mode === "in" ? "Name / Kunde" : "Wofür / Entnahme";
+      entryZone.classList.toggle("mode-in", ui.mode === "in");
+      entryZone.classList.toggle("mode-out", ui.mode === "out");
+      if (ui.mode !== "in") {
+        openInput.checked = false;
+      }
+    }
+
+    function setMode(mode) {
+      ui.mode = mode;
+      applyMode();
+    }
+    window.setMode = setMode;
+
+    function updateSelectionControls() {
+      document.querySelectorAll(".panel-actions").forEach(actions => {
+        const type = actions.dataset.list;
+        const active = selection[type] ? selection[type].active : false;
+        const toggleBtn = actions.querySelector('[data-action="toggle-select"]');
+        const allBtn = actions.querySelector('[data-action="select-all"]');
+        const deleteBtn = actions.querySelector('[data-action="delete-selected"]');
+        if (toggleBtn) toggleBtn.textContent = active ? "Fertig" : "Auswählen";
+        if (allBtn) allBtn.hidden = !active;
+        if (deleteBtn) deleteBtn.hidden = !active;
+      });
+    }
+
+    function getDateKey(date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    function setCalendarMonth(year, month) {
+      calendarState.year = year;
+      calendarState.month = month;
+    }
+
+    function renderCalendar() {
+      if (!calGrid || !calTitle) return;
+      const year = calendarState.year;
+      const month = calendarState.month;
+      const first = new Date(year, month, 1);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const startOffset = (first.getDay() + 6) % 7;
+      const monthLabel = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" })
+        .format(first);
+      calTitle.textContent = monthLabel;
+
+      const todayKey = getDateKey(new Date());
+      const cells = [];
+      const totalCells = 42;
+      for (let i = 0; i < totalCells; i += 1) {
+        const day = i - startOffset + 1;
+        if (day < 1 || day > daysInMonth) {
+          cells.push(`<div class="cal-day empty"></div>`);
+          continue;
+        }
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const isSelected = calendarState.selected === dateStr;
+        const isToday = todayKey === dateStr;
+        cells.push(
+          `<button class="cal-day${isSelected ? " selected" : ""}${isToday ? " today" : ""}" data-date="${dateStr}" type="button">${day}</button>`
+        );
+      }
+      calGrid.innerHTML = cells.join("");
+    }
+
+    function openDateModal(target) {
+      activeDateTarget = target;
+      calendarState.original = target.value || "";
+      const base = calendarState.original ? new Date(calendarState.original) : new Date();
+      if (Number.isNaN(base.getTime())) {
+        const fallback = new Date();
+        setCalendarMonth(fallback.getFullYear(), fallback.getMonth());
+        calendarState.selected = getDateKey(fallback);
+      } else {
+        setCalendarMonth(base.getFullYear(), base.getMonth());
+        calendarState.selected = calendarState.original || getDateKey(base);
+      }
+      renderCalendar();
+      dateModal.classList.add("active");
+    }
+
+    function closeDateModal() {
+      dateModal.classList.remove("active");
+      activeDateTarget = null;
+    }
+
+    function updateEditVisibility() {
+      const isIn = editType.value === "in";
+      editOpenWrap.style.display = isIn ? "inline-flex" : "none";
+      if (!isIn) editOpen.checked = false;
+    }
+
+    function syncEditTypeButtons() {
+      if (!editTypeSwitch) return;
+      editTypeSwitch.querySelectorAll(".edit-type-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.value === editType.value);
+      });
+    }
+
+    function setEditType(value) {
+      editType.value = value;
+      syncEditTypeButtons();
+      updateEditVisibility();
+    }
+
+    function openEdit(id) {
+      const entry = state.transactions.find(tx => tx.id === id);
+      if (!entry) return;
+      editingId = id;
+      editType.value = entry.type;
+      editName.value = entry.name;
+      editAmount.value = entry.amount;
+      editDate.value = entry.date || new Date().toISOString().slice(0, 10);
+      editOpen.checked = entry.type === "in" && entry.status === "open";
+      syncEditTypeButtons();
+      updateEditVisibility();
+      editModal.classList.add("active");
+    }
+
+    function closeEdit() {
+      editModal.classList.remove("active");
+      editingId = null;
+    }
+
+    function handleEntrySave() {
+      const name = (nameInput.value || "").trim();
+      const amount = parseAmount(amountInput.value || "");
+      const date = dateInput.value || new Date().toISOString().slice(0, 10);
+      if (!name || !amount) {
+        try { alert("Bitte Name und Betrag eingeben."); } catch (e) {}
+        return;
+      }
+
+      const entry = {
+        id: createId("tx"),
+        type: ui.mode,
+        name,
+        amount,
+        status: ui.mode === "in"
+          ? (openInput.checked ? "open" : "paid")
+          : "done",
+        date,
+        createdAt: new Date().toISOString()
+      };
+
+      state.transactions.push(entry);
+      state.lastEvent = {
+        id: entry.id,
+        type: entry.type,
+        name: entry.name,
+        amount: entry.amount,
+        at: new Date().toISOString(),
+        sourceId: CLIENT_ID
+      };
+      saveState();
+      notifyEntry(entry);
+      entryForm.reset();
+      dateInput.value = new Date().toISOString().slice(0, 10);
+      openInput.checked = false;
+      render();
+      playCashSound(ui.mode);
+      entryZone.classList.remove("saved");
+      void entryZone.offsetWidth;
+      entryZone.classList.add("saved");
+      setTimeout(() => entryZone.classList.remove("saved"), 400);
+    }
+    window.handleEntrySave = handleEntrySave;
+
+    entryForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      handleEntrySave();
+    });
+
+    modeButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        ui.mode = btn.dataset.mode;
+        applyMode();
+      });
+    });
+
+    function handlePayoutSave() {
+      const amount = parseAmount(payoutAmount.value);
+      if (!amount) return;
+      const date = payoutDate.value || new Date().toISOString().slice(0, 10);
+      const paidIn = state.transactions.filter(tx => tx.type === "in" && tx.status !== "open");
+      const openIn = state.transactions.filter(tx => tx.type === "in" && tx.status === "open");
+      const outTx = state.transactions.filter(tx => tx.type === "out");
+      const sumIn = paidIn.reduce((sum, tx) => sum + tx.amount, 0);
+      const sumOut = outTx.reduce((sum, tx) => sum + tx.amount, 0);
+      const balanceBefore = state.carryOver + sumIn - sumOut;
+      if (amount > balanceBefore) {
+        alert("Ausschüttung ist höher als der aktuelle Saldo.");
+        return;
+      }
+      const periodTransactions = [...paidIn, ...outTx].sort((a, b) => {
+        const aDate = new Date(a.createdAt || `${a.date}T00:00:00`);
+        const bDate = new Date(b.createdAt || `${b.date}T00:00:00`);
+        return aDate - bDate;
+      });
+      const period = {
+        id: createId("period"),
+        date,
+        payoutAmount: amount,
+        balanceBefore,
+        remaining: balanceBefore - amount,
+        carryOver: state.carryOver,
+        sumIn,
+        sumOut,
+        transactions: periodTransactions,
+        createdAt: new Date().toISOString()
+      };
+      state.periods.push(period);
+      state.carryOver = period.remaining;
+      state.transactions = openIn;
+      payoutAmount.value = "";
+      payoutDate.value = new Date().toISOString().slice(0, 10);
+      saveState();
+      render();
+    }
+
+    payoutForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      handlePayoutSave();
+    });
+
+
+    let pressTimer = null;
+    function handlePressStart(event) {
+      const listEl = event.currentTarget;
+      const listType = listEl && listEl.dataset ? listEl.dataset.list : null;
+      if (listType && selection[listType] && selection[listType].active) return;
+      const item = event.target.closest(".item");
+      if (!item) return;
+      pressTimer = setTimeout(() => openEdit(item.dataset.id), 450);
+    }
+    function handlePressEnd() {
+      if (!pressTimer) return;
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+
+    [inList, outList].forEach(list => {
+      list.addEventListener("pointerdown", handlePressStart);
+      list.addEventListener("pointerup", handlePressEnd);
+      list.addEventListener("pointerleave", handlePressEnd);
+      list.addEventListener("pointermove", handlePressEnd);
+      list.addEventListener("pointercancel", handlePressEnd);
+      list.addEventListener("change", (event) => {
+        const box = event.target.closest(".select-box");
+        if (!box) return;
+        const type = list.dataset.list;
+        if (!type) return;
+        if (box.checked) {
+          selection[type].ids.add(box.dataset.id);
+        } else {
+          selection[type].ids.delete(box.dataset.id);
+        }
+      });
+    });
+
+    inList.addEventListener("click", (event) => {
+      const toggle = event.target.closest('[data-action="toggle-open"]');
+      if (!toggle) return;
+      const id = toggle.dataset.id;
+      const entry = state.transactions.find(tx => tx.id === id);
+      if (!entry || entry.type !== "in") return;
+      entry.status = entry.status === "open" ? "paid" : "open";
+      saveState();
+      render();
+    });
+
+    document.querySelectorAll(".panel-actions").forEach(actions => {
+      actions.addEventListener("click", (event) => {
+        const btn = event.target.closest("button");
+        if (!btn) return;
+        const type = btn.dataset.list;
+        if (!type || !selection[type]) return;
+        const action = btn.dataset.action;
+        if (action === "toggle-select") {
+          selection[type].active = !selection[type].active;
+          if (!selection[type].active) selection[type].ids.clear();
+          render();
+        }
+        if (action === "select-all") {
+          const ids = state.transactions.filter(tx => tx.type === type).map(tx => tx.id);
+          const allSelected = ids.length > 0 && ids.every(id => selection[type].ids.has(id));
+          if (allSelected) {
+            selection[type].ids.clear();
+          } else {
+            selection[type].ids = new Set(ids);
+          }
+          render();
+        }
+        if (action === "delete-selected") {
+          const ids = selection[type].ids;
+          if (ids.size === 0) return;
+          if (!confirm("Ausgewählte Einträge wirklich löschen?")) return;
+          state.transactions = state.transactions.filter(tx => !(tx.type === type && ids.has(tx.id)));
+          selection[type].ids.clear();
+          saveState();
+          render();
+        }
+      });
+    });
+
+    editType.addEventListener("change", () => {
+      syncEditTypeButtons();
+      updateEditVisibility();
+    });
+    if (editTypeSwitch) {
+      editTypeSwitch.addEventListener("click", (event) => {
+        const btn = event.target.closest(".edit-type-btn");
+        if (!btn) return;
+        setEditType(btn.dataset.value);
+      });
+    }
+    editCancel.addEventListener("click", closeEdit);
+    editModal.addEventListener("click", (event) => {
+      if (event.target === editModal) closeEdit();
+    });
+    editDelete.addEventListener("click", () => {
+      if (!editingId) return;
+      if (!confirm("Eintrag wirklich löschen?")) return;
+      const index = state.transactions.findIndex(tx => tx.id === editingId);
+      if (index === -1) return;
+      state.transactions.splice(index, 1);
+      saveState();
+      closeEdit();
+      render();
+    });
+    editSave.addEventListener("click", () => {
+      if (!editingId) return;
+      const entry = state.transactions.find(tx => tx.id === editingId);
+      if (!entry) return;
+      const name = editName.value.trim();
+      const amount = parseAmount(editAmount.value);
+      const date = editDate.value || entry.date || new Date().toISOString().slice(0, 10);
+      if (!name || !amount) return;
+      entry.type = editType.value;
+      entry.name = name;
+      entry.amount = amount;
+      entry.date = date;
+      if (entry.type === "in") {
+        entry.status = editOpen.checked ? "open" : "paid";
+      } else {
+        entry.status = "done";
+      }
+      saveState();
+      closeEdit();
+      render();
+    });
+
+    let payoutPressTimer = null;
+    let payoutPressFired = false;
+
+    function clearPayoutPress() {
+      if (payoutPressTimer) clearTimeout(payoutPressTimer);
+      payoutPressTimer = null;
+    }
+
+    function handlePayoutPressStart(event) {
+      const button = event.target.closest(".payout-link");
+      if (!button) return;
+      payoutPressFired = false;
+      clearPayoutPress();
+      payoutPressTimer = setTimeout(() => {
+        payoutPressFired = true;
+        const periodId = button.dataset.id;
+        if (!periodId) return;
+        if (!confirm("Gewinnausschüttung wirklich löschen?")) return;
+        const index = state.periods.findIndex(p => p.id === periodId);
+        if (index === -1) return;
+        state.periods.splice(index, 1);
+        saveState();
+        render();
+      }, 500);
+    }
+
+    function handlePayoutPressEnd() {
+      clearPayoutPress();
+    }
+
+    payoutLinks.addEventListener("pointerdown", handlePayoutPressStart);
+    payoutLinks.addEventListener("pointerup", handlePayoutPressEnd);
+    payoutLinks.addEventListener("pointerleave", handlePayoutPressEnd);
+    payoutLinks.addEventListener("pointercancel", handlePayoutPressEnd);
+
+    payoutLinks.addEventListener("click", (event) => {
+      if (payoutPressFired) {
+        payoutPressFired = false;
+        return;
+      }
+      const button = event.target.closest(".payout-link");
+      if (!button) return;
+      const period = state.periods.find(p => p.id === button.dataset.id);
+      if (!period) return;
+      const dateLabel = period.date ? new Date(period.date).toLocaleDateString("de-DE") : "";
+      payoutMeta.innerHTML = `
+        <div class="payout-summary">
+          <div class="sum-block sum-before"><span>Saldo vorher</span><strong>${formatMoney(period.balanceBefore)}</strong></div>
+          <div class="sum-block sum-out"><span>Ausgeschüttet</span><strong>${formatMoney(period.payoutAmount)}</strong></div>
+          <div class="sum-block sum-rest"><span>Rest</span><strong>${formatMoney(period.remaining)}</strong></div>
+        </div>
+        <div>Datum: ${dateLabel}</div>
+        <div>Summe Eingang (bezahlt): ${formatMoney(period.sumIn)} · Summe Ausgang: ${formatMoney(period.sumOut)}</div>
+        <div>Einträge: ${period.transactions.length}</div>
+      `;
+      payoutTxList.innerHTML = period.transactions.map(tx => {
+        const date = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
+        const typeLabel = tx.type === "in" ? "Eingang" : "Ausgang";
+        const status = tx.type === "in" ? (tx.status === "open" ? "Offen" : "Bezahlt") : "";
+        const meta = [date, typeLabel, status].filter(Boolean).join(" · ");
+        return `
+          <div class="item">
+            <div>
+              <h4>${tx.name}</h4>
+              <small>${meta}</small>
+            </div>
+            <div style="text-align:right; display:grid; gap:6px; justify-items:end;">
+              <div class="amount">${formatMoney(tx.amount)}</div>
+            </div>
+          </div>
+        `;
+      }).join("") || `<p style="color: var(--muted); font-size: 12px;">Keine Einträge.</p>`;
+      payoutModal.classList.add("active");
+    });
+
+    payoutClose.addEventListener("click", () => payoutModal.classList.remove("active"));
+    payoutModal.addEventListener("click", (event) => {
+      if (event.target === payoutModal) payoutModal.classList.remove("active");
+    });
+
+    saldoBig.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openSaldoDetails();
+    });
+    const saldoCard = document.querySelector(".saldo-card");
+    if (saldoCard) {
+      saldoCard.addEventListener("click", openSaldoDetails);
+    }
+    saldoClose.addEventListener("click", () => saldoModal.classList.remove("active"));
+    saldoModal.addEventListener("click", (event) => {
+      if (event.target === saldoModal) saldoModal.classList.remove("active");
+    });
+
+    [dateInput, payoutDate, editDate].forEach(input => {
+      input.readOnly = true;
+      input.addEventListener("click", (event) => {
+        event.preventDefault();
+        openDateModal(input);
+      });
+      input.addEventListener("focus", () => openDateModal(input));
+    });
+
+    if (calPrev) {
+      calPrev.addEventListener("click", () => {
+        let year = calendarState.year;
+        let month = calendarState.month - 1;
+        if (month < 0) {
+          month = 11;
+          year -= 1;
+        }
+        setCalendarMonth(year, month);
+        renderCalendar();
+      });
+    }
+    if (calNext) {
+      calNext.addEventListener("click", () => {
+        let year = calendarState.year;
+        let month = calendarState.month + 1;
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+        setCalendarMonth(year, month);
+        renderCalendar();
+      });
+    }
+    if (calGrid) {
+      calGrid.addEventListener("click", (event) => {
+        const btn = event.target.closest(".cal-day[data-date]");
+        if (!btn) return;
+        calendarState.selected = btn.dataset.date;
+        renderCalendar();
+      });
+    }
+    if (dateToday) {
+      dateToday.addEventListener("click", () => {
+        const today = new Date();
+        setCalendarMonth(today.getFullYear(), today.getMonth());
+        calendarState.selected = getDateKey(today);
+        renderCalendar();
+      });
+    }
+    if (dateClear) {
+      dateClear.addEventListener("click", () => {
+        calendarState.selected = "";
+        renderCalendar();
+      });
+    }
+    dateOk.addEventListener("click", () => {
+      if (!activeDateTarget) return closeDateModal();
+      activeDateTarget.value = calendarState.selected || "";
+      closeDateModal();
+    });
+    dateModal.addEventListener("click", (event) => {
+      if (event.target === dateModal) closeDateModal();
+    });
+    window.addEventListener("keydown", (event) => {
+      if (!dateModal.classList.contains("active")) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDateModal();
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        dateOk.click();
+      }
+    });
+
+    [nameInput, amountInput, dateInput].forEach(input => {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          if (entryForm.requestSubmit) {
+            entryForm.requestSubmit();
+          } else {
+            entryForm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+          }
+        }
+      });
+    });
+
+    if (saveEntryBtn) {
+      saveEntryBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        handleEntrySave();
+      });
+    }
+
+    [payoutAmount, payoutDate].forEach(input => {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          handlePayoutSave();
+        }
+      });
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      const header = ["ID","Typ","Name","Betrag","Status","Datum"];
+      const txRows = state.transactions.map(tx => [
+        tx.id,
+        tx.type,
+        tx.name,
+        tx.amount,
+        tx.status,
+        tx.date
+      ]);
+      const payoutRows = (state.periods || []).map(p => [
+        p.id,
+        "payout",
+        "Gewinnausschüttung",
+        p.payoutAmount,
+        "done",
+        p.date
+      ]);
+      const rows = [...txRows, ...payoutRows];
+      const csv = [header, ...rows].map(row => row.map(value => `"${value}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `kassa_notiz_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    dateInput.value = today;
+    payoutDate.value = today;
+
+    normalizeState();
+    applyMode();
+    render();
+    if (REMOTE_ENABLED) initRemote();
+  </script>
+</body>
+</html>
