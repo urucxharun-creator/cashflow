@@ -1305,10 +1305,10 @@
     if (window.SAFE_MODE) {
       const safeStoreKey = "cashflow_safe_v1";
       // Live-Sync (SAFE) optional
-      const SAFE_SUPABASE_URL = "https://nmmrwwsogmettxfjvrit.supabase.co";
-      const SAFE_SUPABASE_KEY = "sb_publishable_eHOrrq8jdzUTkatE3dMEcA_yZljinrY";
+      const SAFE_SUPABASE_URL = "";
+      const SAFE_SUPABASE_KEY = "";
       const SAFE_TEAM = (new URLSearchParams(window.location.search).get("team")) || "cashflow";
-      const SAFE_REMOTE = Boolean(SAFE_SUPABASE_URL && SAFE_SUPABASE_KEY);
+      const SAFE_REMOTE = false;
       const safeGet = (key) => {
         try { return localStorage.getItem(key); } catch (e) { return null; }
       };
@@ -1449,8 +1449,7 @@
         const amountRaw = (amountInput && amountInput.value || "").trim();
         const amount = safeParseAmount(amountRaw);
         const date = (dateInput && dateInput.value) || new Date().toISOString().slice(0, 10);
-        if (!name || !amountRaw) {
-          try { alert("Bitte Name und Betrag eingeben."); } catch (e) {}
+        if (!name || !amountRaw || amount <= 0) {
           return;
         }
         const entry = {
@@ -1480,6 +1479,15 @@
       const saveEntryBtn = document.getElementById("saveEntryBtn");
       if (saveEntryBtn) saveEntryBtn.addEventListener("click", safeSaveEntry);
       if (entryForm) entryForm.addEventListener("submit", (e) => e.preventDefault());
+      [nameInput, amountInput, dateInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            safeSaveEntry();
+          }
+        });
+      });
 
       const today = new Date().toISOString().slice(0, 10);
       if (dateInput) dateInput.value = today;
