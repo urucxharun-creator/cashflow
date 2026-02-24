@@ -1292,8 +1292,144 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // SAFE MODE: minimal, robust local-only logic
+    window.SAFE_MODE = true;
+  </script>
+  <script>
+    if (window.SAFE_MODE) {
+      const safeStoreKey = "cashflow_safe_v1";
+      const safeGet = (key) => {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+      };
+      const safeSet = (key, value) => {
+        try { localStorage.setItem(key, value); } catch (e) {}
+      };
+      const safeParseAmount = (value) => {
+        if (value === null || value === undefined) return 0;
+        const raw = value.toString().trim();
+        if (!raw) return 0;
+        const filtered = raw.replace(/[^0-9,.-]/g, "");
+        if (!filtered) return 0;
+        let cleaned = filtered;
+        const hasComma = cleaned.indexOf(",") !== -1;
+        const hasDot = cleaned.indexOf(".") !== -1;
+        if (hasComma && hasDot) {
+          cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
+        } else {
+          cleaned = cleaned.replace(/,/g, ".");
+        }
+        const num = Number.parseFloat(cleaned);
+        return Number.isFinite(num) ? num : 0;
+      };
+      const safeFormatMoney = (value) => {
+        try {
+          return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(value);
+        } catch (e) {
+          return `${Number(value || 0).toFixed(2)} EUR`;
+        }
+      };
+      const safeLoad = () => {
+        const stored = safeGet(safeStoreKey);
+        if (!stored) return { transactions: [] };
+        try { return JSON.parse(stored); } catch (e) { return { transactions: [] }; }
+      };
+      const safeSave = (state) => safeSet(safeStoreKey, JSON.stringify(state));
+
+      const entryZone = document.getElementById("entryZone");
+      const nameInput = document.getElementById("nameInput");
+      const amountInput = document.getElementById("amountInput");
+      const dateInput = document.getElementById("dateInput");
+      const openInput = document.getElementById("openInput");
+      const openWrap = document.getElementById("openWrap");
+      const inList = document.getElementById("inList");
+      const outList = document.getElementById("outList");
+      const sumInEl = document.getElementById("sumIn");
+      const sumOutEl = document.getElementById("sumOut");
+      const saldoBig = document.getElementById("saldoBig");
+      const modeButtons = document.querySelectorAll(".mode-btn");
+
+      let safeState = safeLoad();
+      let safeMode = "in";
+
+      function applySafeMode() {
+        modeButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === safeMode));
+        if (openWrap) openWrap.style.display = safeMode === "in" ? "inline-flex" : "none";
+        if (entryZone) {
+          entryZone.classList.toggle("mode-in", safeMode === "in");
+          entryZone.classList.toggle("mode-out", safeMode === "out");
+        }
+        if (safeMode !== "in" && openInput) openInput.checked = false;
+      }
+
+      function renderSafe() {
+        const inTx = (safeState.transactions || []).filter(tx => tx.type === "in");
+        const outTx = (safeState.transactions || []).filter(tx => tx.type === "out");
+        const sumIn = inTx.filter(tx => tx.status !== "open").reduce((s, t) => s + t.amount, 0);
+        const sumOut = outTx.reduce((s, t) => s + t.amount, 0);
+        if (sumInEl) sumInEl.textContent = safeFormatMoney(sumIn);
+        if (sumOutEl) sumOutEl.textContent = safeFormatMoney(sumOut);
+        if (saldoBig) saldoBig.textContent = safeFormatMoney(sumIn - sumOut);
+
+        const renderList = (items, target, isIn) => {
+          if (!target) return;
+          target.innerHTML = items.map(tx => {
+            const dateLabel = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
+            const status = isIn ? (tx.status === "open" ? "Offen" : "Bezahlt") : "";
+            return `
+              <div class="item">
+                <div>
+                  <h4>${tx.name}</h4>
+                  <small>${[dateLabel, status].filter(Boolean).join(" · ")}</small>
+                </div>
+                <div class="amount">${safeFormatMoney(tx.amount)}</div>
+              </div>
+            `;
+          }).join("") || `<p style="color: var(--muted); font-size: 12px;">Noch keine Eintraege.</p>`;
+        };
+        renderList(inTx, inList, true);
+        renderList(outTx, outList, false);
+      }
+
+      function safeSaveEntry() {
+        const name = (nameInput && nameInput.value || "").trim();
+        const amount = safeParseAmount(amountInput && amountInput.value || "");
+        const date = (dateInput && dateInput.value) || new Date().toISOString().slice(0, 10);
+        if (!name || !amount) {
+          try { alert("Bitte Name und Betrag eingeben."); } catch (e) {}
+          return;
+        }
+        const entry = {
+          id: `tx_${Math.random().toString(36).slice(2, 9)}`,
+          type: safeMode,
+          name,
+          amount,
+          status: safeMode === "in" ? (openInput && openInput.checked ? "open" : "paid") : "done",
+          date
+        };
+        safeState.transactions = safeState.transactions || [];
+        safeState.transactions.push(entry);
+        safeSave(safeState);
+        if (nameInput) nameInput.value = "";
+        if (amountInput) amountInput.value = "";
+        if (openInput) openInput.checked = false;
+        renderSafe();
+      }
+
+      window.setMode = (m) => { safeMode = m; applySafeMode(); };
+      window.handleEntrySave = safeSaveEntry;
+
+      modeButtons.forEach(btn => {
+        btn.addEventListener("click", () => window.setMode(btn.dataset.mode));
+      });
+      const saveEntryBtn = document.getElementById("saveEntryBtn");
+      if (saveEntryBtn) saveEntryBtn.addEventListener("click", safeSaveEntry);
+
+      const today = new Date().toISOString().slice(0, 10);
+      if (dateInput) dateInput.value = today;
+      applySafeMode();
+      renderSafe();
+    } else {
     const storeKey = "kassa_notiz_v1";
     const storage = {
       get(key) {
@@ -2452,6 +2588,7 @@
     applyMode();
     render();
     if (REMOTE_ENABLED) initRemote();
+  }
   </script>
 </body>
 </html>
