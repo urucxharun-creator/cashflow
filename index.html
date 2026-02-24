@@ -1522,8 +1522,21 @@
     }
 
     function parseAmount(value) {
-      if (!value) return 0;
-      const cleaned = value.toString().replace(/\./g, "").replace(/,/g, ".");
+      if (value === null || value === undefined) return 0;
+      const raw = value.toString().trim();
+      if (!raw) return 0;
+      // keep digits, comma, dot, minus
+      const filtered = raw.replace(/[^0-9,.-]/g, "");
+      if (!filtered) return 0;
+      // if both comma and dot, assume dot = thousands, comma = decimal (de-DE)
+      let cleaned = filtered;
+      const hasComma = cleaned.indexOf(",") !== -1;
+      const hasDot = cleaned.indexOf(".") !== -1;
+      if (hasComma && hasDot) {
+        cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
+      } else {
+        cleaned = cleaned.replace(/,/g, ".");
+      }
       const num = Number.parseFloat(cleaned);
       return Number.isFinite(num) ? num : 0;
     }
