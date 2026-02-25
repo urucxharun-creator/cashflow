@@ -16,8 +16,8 @@
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;600;700;800&display=swap");
     :root {
-      --bg: #f5f7fb;
-      --bg-2: #e9eef6;
+      --bg: #d9e6f8;
+      --bg-2: #c6d8f1;
       --card: rgba(255, 255, 255, 0.96);
       --ink: #001435;
       --muted: #4a5c6a;
@@ -36,6 +36,8 @@
       --radius: 20px;
       --font-display: "Space Grotesk", "Sora", "Avenir Next", "Poppins", sans-serif;
       --font-body: "Manrope", "Sora", "Avenir Next", "Segoe UI", sans-serif;
+      --list-height-desktop: 320px;
+      --list-height-mobile: 340px;
     }
     * { box-sizing: border-box; }
     body {
@@ -46,10 +48,10 @@
       overflow-x: hidden;
       touch-action: pan-y;
       background:
-        radial-gradient(circle at 10% 15%, rgba(0, 112, 224, 0.18), transparent 45%),
-        radial-gradient(circle at 90% 0%, rgba(0, 48, 135, 0.18), transparent 40%),
-        radial-gradient(circle at 50% 100%, rgba(0, 161, 224, 0.2), transparent 55%),
-        linear-gradient(130deg, var(--bg) 0%, var(--bg-2) 60%, #ffffff 100%);
+        radial-gradient(circle at 10% 15%, rgba(0, 112, 224, 0.26), transparent 45%),
+        radial-gradient(circle at 90% 0%, rgba(0, 48, 135, 0.24), transparent 40%),
+        radial-gradient(circle at 50% 100%, rgba(0, 161, 224, 0.22), transparent 55%),
+        linear-gradient(130deg, #d4e3f8 0%, var(--bg-2) 58%, #e6eefb 100%);
     }
     body::before,
     body::after {
@@ -91,9 +93,89 @@
       50% { transform: scale(1.02); }
       100% { transform: scale(1); }
     }
+    @keyframes entrySweep {
+      0% { transform: translateX(-120%) rotate(10deg); opacity: 0; }
+      15% { opacity: 0.42; }
+      55% { opacity: 0.18; }
+      100% { transform: translateX(120%) rotate(10deg); opacity: 0; }
+    }
+    @keyframes auraMove {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(10px, -8px) scale(1.03); }
+    }
+    @keyframes confettiDrop {
+      0% {
+        opacity: 0.95;
+        transform: translate3d(var(--sx), var(--sy), 0) rotate(0deg) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate3d(calc(var(--sx) + var(--dx)), calc(var(--sy) + var(--dy)), 0) rotate(var(--rot)) scale(0.9);
+      }
+    }
+    @keyframes sadDrop {
+      0% {
+        opacity: 0.85;
+        transform: translate3d(var(--sx), var(--sy), 0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate3d(calc(var(--sx) + var(--dx)), calc(var(--sy) + var(--dy)), 0) scale(0.74);
+      }
+    }
+    @keyframes sadTilt {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(1px) rotate(-0.16deg); }
+      50% { transform: translateY(3px) rotate(0.16deg); }
+      75% { transform: translateY(1px) rotate(-0.12deg); }
+    }
     h1, h2, h3 { margin: 0; font-family: var(--font-display); }
     p { margin: 0; }
     button, input, select { font-family: inherit; }
+    button,
+    .select-btn,
+    .mode-btn,
+    .save-btn,
+    .payout-btn,
+    .soft-btn,
+    .modal-btn {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .fx-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 120;
+    }
+    .fx-piece {
+      position: fixed;
+      left: 0;
+      top: 0;
+      will-change: transform, opacity;
+      pointer-events: none;
+    }
+    .fx-piece.confetti {
+      width: 9px;
+      height: 14px;
+      border-radius: 3px;
+      animation: confettiDrop 900ms cubic-bezier(0.18, 0.76, 0.24, 1) forwards;
+    }
+    .fx-piece.sad {
+      width: 8px;
+      height: 10px;
+      border-radius: 50% 50% 55% 55%;
+      animation: sadDrop 720ms cubic-bezier(0.2, 0.7, 0.24, 1) forwards;
+      filter: saturate(0.92);
+    }
+    .entry-zone.fx-sad {
+      animation: sadTilt 360ms ease;
+    }
 
     .app {
       max-width: 980px;
@@ -101,6 +183,7 @@
       padding: 18px 16px 32px;
       display: grid;
       gap: 16px;
+      overflow-x: hidden;
     }
 
     header {
@@ -127,6 +210,10 @@
       pointer-events: none;
     }
     header > * { position: relative; z-index: 1; }
+    .header-main {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
     header h1 { font-size: 22px; letter-spacing: 0.3px; color: #0b1b22; }
     .brand {
       display: inline-flex;
@@ -159,40 +246,123 @@
       color: var(--accent);
     }
     header p { color: rgba(11, 27, 34, 0.7); font-size: 12px; }
+    .sync-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
+      font-size: 9px;
+      color: rgba(11, 27, 34, 0.62);
+      user-select: none;
+      width: 100%;
+      margin-top: 1px;
+      letter-spacing: 0.2px;
+    }
+    .sync-status .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #9aa6b2;
+      box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+    }
+    .sync-status[data-state="live"] .dot { background: #22c55e; }
+    .sync-status[data-state="syncing"] .dot { background: #0070e0; }
+    .sync-status[data-state="connecting"] .dot { background: #f59e0b; }
+    .sync-status[data-state="error"] .dot { background: #ef4444; }
+    .header-saldo {
+      margin-left: auto;
+      display: grid;
+      gap: 2px;
+      padding: 8px 12px;
+      border-radius: 14px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(227, 238, 255, 0.62));
+      border: 1px solid rgba(0, 112, 224, 0.2);
+      box-shadow: 0 8px 18px rgba(0, 48, 135, 0.12);
+      text-align: right;
+      min-width: 120px;
+    }
+    .header-saldo .saldo-label {
+      font-size: 10px;
+      line-height: 1.1;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: rgba(11, 27, 34, 0.65);
+    }
+    .header-saldo strong {
+      font-size: 17px;
+      line-height: 1.1;
+      font-weight: 900;
+      color: var(--accent-2);
+      white-space: nowrap;
+    }
 
     .entry-zone {
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.78));
+      --entry-aura: rgba(0, 112, 224, 0.2);
+      --entry-aura-x: 20%;
+      --entry-aura-y: 22%;
+      background: linear-gradient(145deg, rgba(229, 239, 253, 0.95), rgba(209, 223, 245, 0.9));
       border-radius: 24px;
       padding: 18px;
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      box-shadow: var(--shadow);
+      border: 1px solid rgba(193, 210, 236, 0.92);
+      box-shadow:
+        0 22px 44px rgba(0, 28, 72, 0.18),
+        0 0 26px rgba(0, 112, 224, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
       display: grid;
       gap: 14px;
       justify-items: center;
       position: relative;
       overflow: hidden;
+      isolation: isolate;
+      backdrop-filter: blur(8px);
+      transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
     }
     .entry-zone::before {
       content: "";
       position: absolute;
-      inset: -40%;
-      background: conic-gradient(from 0deg, rgba(0, 112, 224, 0.18), rgba(0, 48, 135, 0.18), rgba(0, 112, 224, 0.18));
-      opacity: 0.22;
-      animation: spin 18s linear infinite;
+      inset: -28%;
+      background: radial-gradient(circle at var(--entry-aura-x) var(--entry-aura-y), var(--entry-aura), transparent 56%);
+      opacity: 0.56;
+      filter: blur(10px);
+      animation: auraMove 6s ease-in-out infinite;
       pointer-events: none;
     }
     .entry-zone::after {
       content: "";
       position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 20% 20%, rgba(0, 112, 224, 0.22), transparent 55%),
-        radial-gradient(circle at 80% 20%, rgba(0, 48, 135, 0.22), transparent 55%);
-      opacity: 0.6;
+      inset: -35% -70%;
+      background: linear-gradient(110deg, transparent 22%, rgba(255, 255, 255, 0.7) 46%, transparent 64%);
+      animation: entrySweep 6.5s ease-in-out infinite;
       pointer-events: none;
     }
     .entry-zone > * { position: relative; z-index: 1; }
-    .entry-zone.mode-in { box-shadow: 0 24px 48px rgba(0, 112, 224, 0.22), var(--shadow); }
-    .entry-zone.mode-out { box-shadow: 0 24px 48px rgba(255, 159, 90, 0.22), var(--shadow); }
+    .entry-zone.mode-in {
+      --entry-aura: rgba(0, 112, 224, 0.34);
+      --entry-aura-x: 18%;
+      --entry-aura-y: 18%;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(94, 166, 255, 0.42), transparent 44%),
+        linear-gradient(145deg, rgba(225, 238, 255, 0.97), rgba(186, 213, 248, 0.95));
+      border-color: rgba(0, 112, 224, 0.48);
+      box-shadow:
+        0 24px 50px rgba(0, 112, 224, 0.3),
+        0 0 24px rgba(0, 112, 224, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    }
+    .entry-zone.mode-out {
+      --entry-aura: rgba(255, 159, 90, 0.34);
+      --entry-aura-x: 82%;
+      --entry-aura-y: 18%;
+      background:
+        radial-gradient(circle at 84% 12%, rgba(255, 182, 126, 0.44), transparent 44%),
+        linear-gradient(145deg, rgba(255, 234, 214, 0.97), rgba(251, 204, 160, 0.95));
+      border-color: rgba(255, 159, 90, 0.52);
+      box-shadow:
+        0 24px 50px rgba(255, 159, 90, 0.32),
+        0 0 24px rgba(255, 159, 90, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    }
     .entry-zone.saved { animation: pop 0.4s ease; }
     .mode-switch {
       width: 100%;
@@ -210,23 +380,41 @@
       color: #ffffff;
       cursor: pointer;
       background: linear-gradient(135deg, var(--accent), #6eb6ff);
-      box-shadow: 0 18px 30px rgba(0, 112, 224, 0.32);
+      box-shadow: 0 16px 28px rgba(0, 112, 224, 0.3);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       position: relative;
+      text-shadow: none;
+      isolation: isolate;
     }
     .mode-btn.out {
       background: linear-gradient(135deg, var(--out-strong), var(--out-accent-light));
-      box-shadow: 0 18px 30px rgba(255, 159, 90, 0.35);
+      box-shadow: 0 16px 28px rgba(255, 159, 90, 0.32);
+    }
+    .mode-btn::after {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: inherit;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0;
+      box-shadow: 0 0 18px rgba(0, 112, 224, 0.45);
+      transition: opacity 0.15s ease;
+    }
+    .mode-btn.out::after {
+      box-shadow: 0 0 18px rgba(255, 159, 90, 0.45);
     }
     .mode-btn.active {
       outline: 2px solid rgba(255, 255, 255, 0.9);
       transform: translateY(-1px) scale(1.02);
-      box-shadow: 0 0 18px var(--glow-green), 0 0 42px var(--glow-green);
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-      animation: pulseGlow 2.6s ease-in-out infinite;
+      box-shadow: 0 14px 28px rgba(0, 112, 224, 0.34);
+      animation: none;
     }
     .mode-btn.out.active {
-      box-shadow: 0 0 18px var(--glow-orange), 0 0 42px var(--glow-orange);
+      box-shadow: 0 14px 28px rgba(255, 159, 90, 0.34);
+    }
+    .mode-btn.active::after {
+      opacity: 1;
     }
     .mode-btn:active { transform: scale(0.98); }
     .mode-btn:hover { transform: translateY(-2px); }
@@ -242,25 +430,49 @@
     .giant-input {
       width: min(100%, 380px);
       border-radius: 18px;
-      border: 1px solid rgba(12, 30, 40, 0.12);
+      border: 1px solid rgba(0, 72, 155, 0.26);
       padding: 16px 18px;
       font-size: 20px;
       font-weight: 700;
       text-align: center;
-      background: linear-gradient(160deg, #ffffff, #f4f8ff);
+      background:
+        linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 255, 0.92));
       min-height: 58px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.94),
+        0 8px 16px rgba(0, 48, 135, 0.1);
+      transition: box-shadow 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
     }
     .giant-input.name {
       font-size: 22px;
-      background: #eef5ff;
-      border-color: rgba(0, 112, 224, 0.4);
+      background: linear-gradient(160deg, rgba(236, 245, 255, 0.95), rgba(247, 251, 255, 0.95));
+      border-color: rgba(0, 112, 224, 0.52);
     }
     .amount-input {
       width: min(100%, 260px);
       min-height: 68px;
       font-size: 26px;
       margin-inline: auto;
+      font-weight: 800;
+      color: #0b57c9;
+      caret-color: #0b57c9;
+    }
+    .amount-input::placeholder {
+      color: rgba(11, 87, 201, 0.42);
+    }
+    .entry-zone.mode-in .amount-input {
+      color: #0b57c9;
+      caret-color: #0b57c9;
+    }
+    .entry-zone.mode-in .amount-input::placeholder {
+      color: rgba(11, 87, 201, 0.42);
+    }
+    .entry-zone.mode-out .amount-input {
+      color: #a14b16;
+      caret-color: #a14b16;
+    }
+    .entry-zone.mode-out .amount-input::placeholder {
+      color: rgba(161, 75, 22, 0.48);
     }
     .date-input {
       width: min(100%, 220px);
@@ -294,6 +506,18 @@
       border-color: rgba(0, 112, 224, 0.6);
       box-shadow: 0 0 0 3px rgba(0, 112, 224, 0.22);
     }
+    .entry-zone.mode-in .giant-input:focus {
+      border-color: rgba(0, 112, 224, 0.68);
+      box-shadow:
+        0 0 0 3px rgba(0, 112, 224, 0.2),
+        0 10px 20px rgba(0, 112, 224, 0.22);
+    }
+    .entry-zone.mode-out .giant-input:focus {
+      border-color: rgba(255, 159, 90, 0.68);
+      box-shadow:
+        0 0 0 3px rgba(255, 159, 90, 0.22),
+        0 10px 20px rgba(255, 159, 90, 0.2);
+    }
     .row {
       width: 100%;
       display: grid;
@@ -305,11 +529,12 @@
       align-items: center;
       gap: 8px;
       font-size: 13px;
-      color: var(--accent-2);
-      background: rgba(0, 112, 224, 0.12);
+      color: #0f3f86;
+      background: linear-gradient(130deg, rgba(0, 112, 224, 0.2), rgba(140, 196, 255, 0.26));
       padding: 10px 16px;
       border-radius: 999px;
-      border: 1px solid rgba(0, 112, 224, 0.28);
+      border: 1px solid rgba(0, 112, 224, 0.44);
+      box-shadow: 0 8px 18px rgba(0, 112, 224, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.84);
     }
     .open-toggle input {
       width: 22px;
@@ -328,44 +553,62 @@
       cursor: pointer;
       background: linear-gradient(135deg, #003087, #0070e0);
       box-shadow: 0 18px 32px rgba(0, 48, 135, 0.22);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+      position: relative;
+      overflow: hidden;
     }
+    .save-btn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.42), transparent 55%);
+      transform: translateX(-120%);
+      transition: transform 0.45s ease;
+      pointer-events: none;
+    }
+    .save-btn:hover::before { transform: translateX(120%); }
     .save-btn:hover { transform: translateY(-2px); box-shadow: 0 22px 36px rgba(0, 48, 135, 0.28); }
     .entry-zone.mode-in .save-btn {
       background: linear-gradient(135deg, var(--accent-2), var(--accent));
       box-shadow: 0 0 22px var(--glow-green), 0 18px 32px rgba(0, 112, 224, 0.22);
     }
     .entry-zone.mode-out .save-btn {
-      background: linear-gradient(135deg, var(--out-strong), #ffd0a6);
-      box-shadow: 0 0 20px var(--glow-orange), 0 18px 32px rgba(255, 159, 90, 0.22);
+      background: linear-gradient(135deg, #c45a1c, #f79d5a);
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      box-shadow: 0 0 22px rgba(255, 159, 90, 0.42), 0 18px 32px rgba(255, 123, 40, 0.3);
+      color: #fff;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
     }
     .entry-zone.mode-out .save-btn:hover {
-      box-shadow: 0 22px 36px rgba(255, 159, 90, 0.32);
+      box-shadow: 0 24px 38px rgba(255, 123, 40, 0.38);
     }
 
     .split-lists {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
+      align-items: stretch;
     }
     .card {
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.86));
+      background: linear-gradient(160deg, rgba(233, 242, 255, 0.95), rgba(214, 227, 247, 0.9));
       border-radius: var(--radius);
-      box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 16px 30px rgba(0, 48, 135, 0.18), 0 0 18px rgba(0, 112, 224, 0.12);
+      border: 1px solid rgba(210, 225, 247, 0.9);
       padding: 14px;
       display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
       gap: 12px;
       min-width: 0;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      height: 100%;
     }
     .card.card-in {
-      border: 1px solid rgba(0, 112, 224, 0.12);
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 255, 0.96));
+      border: 1px solid rgba(0, 112, 224, 0.24);
+      background: linear-gradient(160deg, rgba(229, 240, 255, 0.98), rgba(207, 224, 248, 0.94));
     }
     .card.card-out {
-      border: 1px solid rgba(255, 159, 90, 0.32);
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 236, 220, 0.94));
+      border: 1px solid rgba(255, 159, 90, 0.38);
+      background: linear-gradient(160deg, rgba(255, 238, 223, 0.97), rgba(245, 221, 199, 0.92));
     }
     .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
     .panel-title {
@@ -375,6 +618,20 @@
       gap: 10px;
     }
     .panel-title h2 { font-size: 18px; }
+    .card.card-in .panel-title {
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 112, 224, 0.16), rgba(127, 183, 255, 0.2));
+      border: 1px solid rgba(0, 112, 224, 0.24);
+    }
+    .card.card-out .panel-title {
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255, 159, 90, 0.18), rgba(255, 201, 161, 0.22));
+      border: 1px solid rgba(255, 159, 90, 0.34);
+    }
+    .card.card-in .panel-title h2 { color: #003087; }
+    .card.card-out .panel-title h2 { color: #b45f1c; }
     .panel-actions {
       display: flex;
       gap: 6px;
@@ -402,23 +659,28 @@
       color: var(--accent);
       background: rgba(0, 112, 224, 0.06);
     }
-
-    @media (max-width: 520px) {
-      .split-lists { gap: 10px; }
-      .card { padding: 10px; }
-      .panel-title { flex-direction: column; align-items: flex-start; gap: 6px; }
-      .panel-title h2 { font-size: 16px; }
-      .panel-actions { gap: 4px; width: 100%; justify-content: flex-start; }
-      .select-btn { padding: 4px 6px; font-size: 10px; border-radius: 8px; }
-      .sum-row { font-size: 11px; }
-      .sum-value { font-size: 13px; }
-      .sum-row span { max-width: 100%; }
-      .list { max-height: 200px; gap: 6px; }
-      .item { padding: 6px 8px; }
-      .item h4 { font-size: 12px; }
-      .item small { font-size: 9px; }
-      .amount { font-size: 12px; }
+    .show-all-btn {
+      justify-self: stretch;
+      width: 100%;
+      margin-top: -2px;
+      min-height: 34px;
     }
+    .show-all-btn.is-hidden {
+      visibility: hidden;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .card.card-in .show-all-btn {
+      border-color: rgba(0, 112, 224, 0.28);
+      color: #005cb5;
+      background: rgba(0, 112, 224, 0.08);
+    }
+    .card.card-out .show-all-btn {
+      border-color: rgba(255, 159, 90, 0.36);
+      color: #b45f1c;
+      background: rgba(255, 159, 90, 0.1);
+    }
+
     .panel-title span {
       font-size: 12px;
       color: var(--muted);
@@ -426,7 +688,8 @@
     .list {
       display: grid;
       gap: 8px;
-      max-height: 320px;
+      height: var(--list-height-desktop);
+      max-height: var(--list-height-desktop);
       overflow: auto;
       padding-right: 4px;
     }
@@ -435,14 +698,31 @@
       border-radius: 12px;
       padding: 10px 12px;
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
-      background: linear-gradient(160deg, #ffffff, #f8f8f8);
+      background: linear-gradient(160deg, rgba(248, 251, 255, 0.96), rgba(236, 243, 253, 0.94));
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .item:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
-    .item h4 { margin: 0; font-size: 14px; }
+    .item-main {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+    .item-text { min-width: 0; }
+    .item h4 {
+      margin: 0;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .item small { color: var(--muted); font-size: 11px; }
+    .item-side {
+      text-align: right;
+      min-width: 0;
+    }
     .amount {
       font-weight: 700;
       font-size: 14px;
@@ -455,6 +735,8 @@
       gap: 6px;
       flex-wrap: nowrap;
     }
+    .item[data-type="in"] .amount-row { justify-content: space-between; }
+    .item[data-type="out"] .amount-row { justify-content: flex-end; }
     .select-box {
       width: 18px;
       height: 18px;
@@ -464,31 +746,52 @@
     .tag {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       font-size: 13px;
       padding: 6px 12px;
       min-height: 34px;
       border-radius: 999px;
-      background: rgba(255, 159, 90, 0.22);
-      color: #b24b19;
-      border: 1px solid rgba(255, 159, 90, 0.35);
       cursor: pointer;
+      border: 1px solid transparent;
+      color: #1f2937;
+      background: #eef2f7;
+    }
+    .tag.open {
+      background: rgba(216, 91, 91, 0.14);
+      color: #9f2f2f;
+      border-color: rgba(216, 91, 91, 0.34);
     }
     .tag.paid {
-      background: rgba(0, 112, 224, 0.12);
-      color: var(--accent);
-      border: 1px solid rgba(0, 112, 224, 0.2);
+      background: rgba(22, 163, 74, 0.14);
+      color: #166534;
+      border-color: rgba(22, 163, 74, 0.34);
     }
     .sum-row {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      padding-top: 6px;
-      border-top: 1px dashed rgba(12, 30, 40, 0.08);
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(12, 30, 40, 0.08);
+      min-height: 76px;
       font-size: 13px;
       font-weight: 700;
       gap: 6px;
-      flex-wrap: wrap;
+    }
+    .card.card-in .sum-row {
+      background: rgba(0, 112, 224, 0.09);
+      border-color: rgba(0, 112, 224, 0.22);
+    }
+    .card.card-out .sum-row {
+      background: rgba(255, 159, 90, 0.12);
+      border-color: rgba(255, 159, 90, 0.3);
+    }
+    .sum-row span:first-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .sum-value {
       font-size: 15px;
@@ -517,9 +820,9 @@
       margin: 0 auto;
       padding: 10px;
       border-radius: 16px;
-      background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(229, 238, 252, 0.9));
-      border: 1px solid rgba(0, 112, 224, 0.2);
-      box-shadow: 0 14px 28px rgba(0, 112, 224, 0.12);
+      background: linear-gradient(150deg, rgba(228, 239, 255, 0.95), rgba(206, 224, 248, 0.92));
+      border: 1px solid rgba(0, 112, 224, 0.28);
+      box-shadow: 0 16px 30px rgba(0, 48, 135, 0.18);
     }
     .payout-history h4 {
       margin: 0;
@@ -533,18 +836,12 @@
       display: grid;
       gap: 8px;
     }
-    .payout-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: stretch;
-    }
     .payout-link {
       border: none;
       border-radius: 14px;
       padding: 10px 12px;
-      background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(230, 240, 255, 0.9));
-      border: 1px solid rgba(0, 112, 224, 0.2);
+      background: linear-gradient(150deg, rgba(236, 245, 255, 0.98), rgba(213, 229, 251, 0.94));
+      border: 1px solid rgba(0, 112, 224, 0.28);
       text-align: left;
       cursor: pointer;
       display: grid;
@@ -569,22 +866,6 @@
     }
     .payout-link:hover { transform: translateY(-1px); box-shadow: 0 16px 26px rgba(0, 112, 224, 0.2); }
     .payout-link:hover::before { transform: translateX(120%); }
-    .payout-delete {
-      border: 1px solid rgba(216, 91, 91, 0.38);
-      border-radius: 12px;
-      background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(255, 228, 228, 0.9));
-      color: var(--out-alert);
-      font-size: 12px;
-      font-weight: 800;
-      min-width: 76px;
-      padding: 0 10px;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .payout-delete:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 18px rgba(216, 91, 91, 0.2);
-    }
     .payout-btn {
       border: none;
       border-radius: 14px;
@@ -678,9 +959,10 @@
       text-shadow: 0 0 12px var(--glow-green);
     }
     .saldo-card .saldo-amount {
-      font-size: 66px;
+      font-size: clamp(34px, 10vw, 66px);
       font-weight: 900;
       letter-spacing: 0.8px;
+      line-height: 0.95;
       color: var(--accent);
       text-shadow:
         0 0 10px rgba(255, 255, 255, 0.8),
@@ -693,11 +975,11 @@
       gap: 12px;
     }
     .payout-card {
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(234, 241, 255, 0.92));
+      background: linear-gradient(160deg, rgba(226, 238, 255, 0.96), rgba(202, 222, 248, 0.92));
       border-radius: 22px;
       padding: 16px;
-      border: 1px solid rgba(0, 112, 224, 0.18);
-      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(0, 112, 224, 0.3);
+      box-shadow: 0 18px 34px rgba(0, 48, 135, 0.18), 0 0 18px rgba(0, 112, 224, 0.14);
       display: grid;
       gap: 12px;
       max-width: 620px;
@@ -743,11 +1025,11 @@
       gap: 12px;
     }
     .monthly-card {
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(234, 241, 255, 0.92));
+      background: linear-gradient(160deg, rgba(226, 238, 255, 0.96), rgba(202, 222, 248, 0.92));
       border-radius: 26px;
       padding: 20px;
-      border: 1px solid rgba(0, 112, 224, 0.18);
-      box-shadow: 0 22px 44px rgba(0, 48, 135, 0.12);
+      border: 1px solid rgba(0, 112, 224, 0.3);
+      box-shadow: 0 22px 44px rgba(0, 48, 135, 0.2), 0 0 20px rgba(0, 112, 224, 0.12);
       display: grid;
       gap: 18px;
     }
@@ -837,14 +1119,29 @@
       justify-content: space-between;
       padding: 12px 14px;
       border-radius: 14px;
-      background: #ffffff;
+      background: linear-gradient(160deg, rgba(244, 248, 255, 0.98), rgba(225, 236, 252, 0.94));
       border: 1px solid var(--line);
+      min-width: 0;
+      overflow: hidden;
     }
     .month-stats .stat.in { border-left: 4px solid var(--in-strong); }
     .month-stats .stat.out { border-left: 4px solid var(--out-strong); }
     .month-stats .stat.open { border-left: 4px solid var(--accent-3); }
-    .month-stats .stat span { color: var(--muted); font-size: 13px; }
-    .month-stats .stat strong { font-size: 15px; color: var(--ink); }
+    .month-stats .stat span {
+      color: var(--muted);
+      font-size: 13px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .month-stats .stat strong {
+      font-size: 15px;
+      color: var(--ink);
+      white-space: nowrap;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
     .month-legend {
       display: flex;
       align-items: center;
@@ -870,11 +1167,11 @@
       gap: 12px;
     }
     .notes-card {
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(234, 241, 255, 0.92));
+      background: linear-gradient(160deg, rgba(226, 238, 255, 0.96), rgba(202, 222, 248, 0.92));
       border-radius: 22px;
       padding: 18px;
-      border: 1px solid rgba(0, 112, 224, 0.18);
-      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(0, 112, 224, 0.3);
+      box-shadow: 0 18px 34px rgba(0, 48, 135, 0.18), 0 0 18px rgba(0, 112, 224, 0.14);
       display: grid;
       gap: 12px;
       max-width: 900px;
@@ -897,7 +1194,7 @@
       font-size: 14px;
       resize: vertical;
       font-family: var(--font-body);
-      background: #ffffff;
+      background: linear-gradient(160deg, rgba(244, 248, 255, 0.98), rgba(230, 239, 252, 0.94));
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
     .notes-card textarea:focus {
@@ -949,7 +1246,7 @@
     .modal {
       position: fixed;
       inset: 0;
-      background: rgba(0, 32, 80, 0.45);
+      background: rgba(0, 22, 62, 0.64);
       display: none;
       align-items: center;
       justify-content: center;
@@ -958,19 +1255,55 @@
     }
     .modal.active { display: flex; }
     .modal-card {
-      background: linear-gradient(160deg, #ffffff, #eef3ff);
+      background: linear-gradient(160deg, rgba(232, 242, 255, 0.98), rgba(207, 224, 248, 0.96));
       border-radius: 20px;
       padding: 18px;
       width: min(440px, 94vw);
-      border: 1px solid rgba(0, 112, 224, 0.18);
-      box-shadow: 0 24px 48px rgba(0, 48, 135, 0.18), 0 0 22px rgba(0, 112, 224, 0.2);
+      border: 1px solid rgba(0, 112, 224, 0.3);
+      box-shadow: 0 24px 48px rgba(0, 20, 56, 0.34), 0 0 24px rgba(0, 112, 224, 0.24);
       display: grid;
       gap: 12px;
     }
+    #editModal.modal-in .modal-card {
+      background: linear-gradient(160deg, rgba(232, 242, 255, 0.98), rgba(207, 224, 248, 0.96));
+      border-color: rgba(0, 112, 224, 0.3);
+      box-shadow: 0 24px 48px rgba(0, 20, 56, 0.34), 0 0 24px rgba(0, 112, 224, 0.24);
+    }
+    #editModal.modal-in .modal-card h3 {
+      color: var(--accent-2);
+    }
+    #editModal.modal-in .modal-btn.save {
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      border-color: rgba(255, 255, 255, 0.34);
+      color: #ffffff;
+    }
+    #editModal.modal-out .modal-card {
+      background: linear-gradient(160deg, rgba(255, 236, 220, 0.98), rgba(250, 211, 179, 0.96));
+      border-color: rgba(255, 159, 90, 0.42);
+      box-shadow: 0 24px 48px rgba(100, 44, 9, 0.28), 0 0 24px rgba(255, 159, 90, 0.24);
+    }
+    #editModal.modal-out .modal-card h3 {
+      color: #a14b16;
+    }
+    #editModal.modal-out .open-toggle {
+      color: #8b3f12;
+      background: linear-gradient(130deg, rgba(255, 167, 102, 0.22), rgba(255, 204, 161, 0.26));
+      border-color: rgba(255, 159, 90, 0.44);
+    }
+    #editModal.modal-out .modal-btn.save {
+      background: linear-gradient(135deg, #c45a1c, #f79d5a);
+      border-color: rgba(255, 255, 255, 0.36);
+      color: #ffffff;
+    }
     .modal-card.wide { width: min(560px, 94vw); }
+    #fullListContent {
+      max-height: 62vh;
+      overflow: auto;
+      padding-right: 2px;
+    }
     #dateModal { z-index: 20; }
     #dateModal .modal-card {
-      background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
+      background: linear-gradient(160deg, rgba(232, 242, 255, 0.98), rgba(209, 226, 250, 0.95));
       border: 1px solid rgba(255, 255, 255, 0.8);
       box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18),
         0 0 22px rgba(0, 112, 224, 0.25),
@@ -1103,24 +1436,366 @@
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .soft-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .soft-btn.warn {
+      background: #fff1f1;
+      border-color: rgba(180, 35, 24, 0.24);
+      color: #9f2121;
+    }
+
+    .undo-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      width: min(540px, calc(100vw - 20px));
+      display: none;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: linear-gradient(150deg, rgba(4, 31, 78, 0.95), rgba(0, 48, 135, 0.92));
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.24);
+      z-index: 50;
+    }
+    .undo-toast.active { display: grid; }
+    .undo-toast button {
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .trash-list {
+      display: grid;
+      gap: 8px;
+      max-height: 56vh;
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .trash-item {
+      border: 1px solid rgba(0, 112, 224, 0.2);
+      border-radius: 12px;
+      background: linear-gradient(160deg, rgba(248, 252, 255, 0.98), rgba(231, 239, 252, 0.95));
+      padding: 8px 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .trash-item .meta {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .trash-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
 
     @media (max-width: 920px) {
       .row { grid-template-columns: 1fr; }
       .mode-btn { font-size: 22px; }
+      header {
+        position: relative;
+        align-items: flex-start;
+        padding: 12px 14px;
+      }
+      .header-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-right: 126px;
+      }
+      .header-saldo {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        margin: 0;
+        min-width: 108px;
+        width: auto;
+        padding: 6px 10px;
+        border-radius: 12px;
+        box-shadow: 0 7px 14px rgba(0, 48, 135, 0.14);
+      }
+      .header-saldo .saldo-label { font-size: 9px; }
+      .header-saldo strong { font-size: 14px; }
+    }
+
+    @media (max-width: 760px) {
+      .monthly-card {
+        padding: 14px;
+        gap: 12px;
+      }
+      .monthly-body {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .pie {
+        width: min(180px, 56vw);
+        height: min(180px, 56vw);
+      }
+      .pie::after { inset: 20px; }
+      .month-stats {
+        width: 100%;
+        min-width: 0;
+      }
+      .month-stats .stat {
+        min-width: 0;
+        padding: 10px 12px;
+      }
+      .month-stats .stat span {
+        min-width: 0;
+        font-size: 12px;
+      }
+      .month-stats .stat strong {
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .app {
+        padding: 12px 10px 22px;
+        gap: 12px;
+      }
+      header {
+        padding: 12px 14px;
+        gap: 8px;
+      }
+      .header-main {
+        flex: 1 1 auto;
+        padding-right: 112px;
+      }
+      .brand-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+      }
+      .brand-text {
+        font-size: clamp(20px, 7vw, 24px);
+      }
+      header p {
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.2;
+        font-size: 11px;
+      }
+      .sync-status {
+        font-size: 8px;
+        gap: 4px;
+      }
+      .header-saldo {
+        top: 8px;
+        right: 10px;
+        min-width: 98px;
+        width: auto;
+        padding: 5px 8px;
+        border-radius: 10px;
+      }
+      .header-saldo .saldo-label { font-size: 8px; }
+      .header-saldo strong { font-size: 13px; }
+      .entry-zone {
+        padding: 14px;
+      }
+      .mode-switch { gap: 8px; }
+      .mode-btn {
+        border-radius: 18px;
+        padding: 12px 10px;
+        font-size: 16px;
+      }
+      .giant-input.name {
+        width: 100%;
+        min-height: 50px;
+        font-size: 16px;
+      }
+      .amount-input {
+        width: min(100%, 210px);
+        min-height: 56px;
+        font-size: 32px;
+      }
+      .date-input {
+        width: min(100%, 200px);
+        min-height: 52px;
+        font-size: 17px;
+      }
+      .open-toggle {
+        width: 100%;
+        justify-content: center;
+        font-size: 12px;
+        padding: 8px 10px;
+        flex-wrap: wrap;
+      }
+      .open-toggle span {
+        text-align: center;
+        line-height: 1.2;
+      }
+      .open-toggle input {
+        width: 24px;
+        height: 24px;
+      }
+      .split-lists { gap: 6px; }
+      .card { padding: 7px; gap: 7px; }
+      .panel-title {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+      }
+      .panel-title h2 { font-size: 14px; }
+      .panel-actions { width: auto; gap: 4px; }
+      .select-btn {
+        min-height: 30px;
+        padding: 4px 7px;
+        font-size: 10px;
+        border-radius: 8px;
+      }
+      .list { max-height: 300px; gap: 3px; padding-right: 0; }
+      .list {
+        height: var(--list-height-mobile);
+        max-height: var(--list-height-mobile);
+      }
+      .item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        padding: 5px 6px;
+        gap: 6px;
+      }
+      .item-main { gap: 6px; }
+      .item h4 {
+        font-size: 11px;
+        white-space: nowrap;
+        display: block;
+      }
+      .item small { display: none; }
+      .item-side { text-align: right; }
+      .amount-row {
+        width: auto;
+        gap: 5px;
+        justify-content: flex-end;
+      }
+      .item[data-type="in"] .amount-row { justify-content: flex-end; }
+      .amount { font-size: 12px; }
+      .tag {
+        width: 11px;
+        height: 11px;
+        min-height: 11px;
+        min-width: 11px;
+        padding: 0;
+        border-radius: 999px;
+        font-size: 0;
+        border: 0;
+      }
+      .tag.open { background: #ef4444; }
+      .tag.paid { display: none; }
+      .sum-row {
+        font-size: 10.5px;
+        gap: 4px;
+        min-height: 68px;
+      }
+      .sum-value { font-size: 12px; }
+      .saldo-card {
+        padding: 18px 12px;
+        border-radius: 24px;
+      }
+      .saldo-card h3 { font-size: 16px; }
+      .saldo-card .saldo-amount {
+        font-size: clamp(34px, 12vw, 52px);
+      }
+      .payout-card { padding: 12px; }
+      .payout-form h4 { font-size: 16px; }
+      .payout-btn {
+        font-size: 14px;
+        padding: 10px 14px;
+      }
+      .monthly-card {
+        padding: 12px;
+        gap: 10px;
+      }
+      .monthly-header h3 { font-size: 16px; }
+      .month-select {
+        font-size: 13px;
+        padding: 10px 12px;
+        max-width: 100%;
+      }
+      .month-stats .stat {
+        padding: 9px 10px;
+        border-radius: 12px;
+      }
+      .month-stats .stat span { font-size: 11px; }
+      .month-stats .stat strong { font-size: 13px; }
+      .notes-card {
+        padding: 12px;
+        gap: 10px;
+      }
+      .notes-card h3 { font-size: 16px; }
+      .notes-card textarea {
+        min-height: 110px;
+        font-size: 13px;
+      }
+      .undo-toast {
+        width: calc(100vw - 16px);
+        bottom: 10px;
+        padding: 9px 10px;
+        gap: 8px;
+      }
+      .undo-toast button {
+        padding: 7px 10px;
+      }
+      #fullListContent .item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 6px;
+        gap: 6px;
+      }
+      #fullListContent .item small {
+        display: block;
+        font-size: 9px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .split-lists { gap: 5px; }
+      .card { padding: 6px; }
+      .panel-title h2 { font-size: 13px; }
+      .select-btn {
+        min-height: 28px;
+        font-size: 9px;
+      }
+      .item h4 { font-size: 10.5px; }
+      .amount { font-size: 11px; }
+      .tag {
+        width: 10px;
+        height: 10px;
+      }
+      .saldo-card .saldo-amount {
+        font-size: clamp(30px, 11vw, 44px);
+      }
+      .open-toggle { font-size: 11px; }
     }
   </style>
 </head>
 <body>
+  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
   <div class="app">
     <header>
-      <div>
+      <div class="header-main">
         <h1 class="brand">
           <span class="brand-icon">$</span>
           <span class="brand-text">
             <span class="cash">CA$H</span><span class="flow">FLOW</span>
           </span>
         </h1>
-        <p>Eintragen wie Zettel – schnell, klar, ohne Stress.</p>
+        <p>Scheiss auf Zettel bro! Viel Praktischer.</p>
+      </div>
+      <div class="header-saldo" aria-live="polite">
+        <span class="saldo-label">Saldo</span>
+        <strong id="saldoHeader">0,00 €</strong>
+        <div class="sync-status" id="syncStatus" data-state="local">
+          <span class="dot"></span>
+          <span id="syncStatusText">Lokal</span>
+        </div>
       </div>
     </header>
 
@@ -1132,7 +1807,7 @@
 
       <form id="entryForm" class="entry-form" autocomplete="off" novalidate>
         <input id="nameInput" class="giant-input name" placeholder="Name / Kunde" required />
-        <input id="amountInput" class="giant-input amount-input" placeholder="0,00" required inputmode="decimal" />
+        <input id="amountInput" class="giant-input amount-input" placeholder="0,00 €" required inputmode="decimal" />
         <input id="dateInput" class="giant-input date-input" type="date" />
         <label class="open-toggle" id="openWrap">
           <input id="openInput" type="checkbox" />
@@ -1153,8 +1828,9 @@
           </div>
         </div>
         <div class="list" id="inList" data-list="in"></div>
+        <button class="select-btn ghost show-all-btn is-hidden" id="showAllInBtn" type="button">Alle anzeigen</button>
         <div class="sum-row">
-          <span>Summe Eingang (bezahlt)</span>
+          <span>Summe Eingang</span>
           <span class="sum-value in" id="sumIn">0</span>
         </div>
       </div>
@@ -1169,6 +1845,7 @@
           </div>
         </div>
         <div class="list" id="outList" data-list="out"></div>
+        <button class="select-btn ghost show-all-btn is-hidden" id="showAllOutBtn" type="button">Alle anzeigen</button>
         <div class="sum-row">
           <span>Summe Ausgang</span>
           <span class="sum-value out" id="sumOut">0</span>
@@ -1187,7 +1864,7 @@
       <div class="payout-card">
         <form class="payout-form" id="payoutForm" autocomplete="off">
           <h4>Gewinnausschüttung</h4>
-          <input id="payoutAmount" class="giant-input amount-input" placeholder="Betrag" inputmode="decimal" />
+          <input id="payoutAmount" class="giant-input amount-input" placeholder="Betrag €" inputmode="decimal" />
           <input id="payoutDate" class="giant-input date-input" type="date" />
           <button class="payout-btn" id="payoutSave" type="submit">Ausschüttung speichern</button>
         </form>
@@ -1200,6 +1877,10 @@
 
     <div class="footer-actions">
       <button class="soft-btn" id="exportBtn" type="button">CSV Export</button>
+      <button class="soft-btn" id="backupBtn" type="button">Backup</button>
+      <button class="soft-btn" id="importBtn" type="button">Restore</button>
+      <button class="soft-btn warn" id="trashBtn" type="button">Papierkorb (0)</button>
+      <input id="importFileInput" type="file" accept="application/json,.json" hidden />
     </div>
 
     <section class="monthly-section">
@@ -1255,16 +1936,12 @@
   <div class="modal" id="editModal">
     <div class="modal-card">
       <h3>Eintrag bearbeiten</h3>
-      <div class="edit-type-switch" id="editTypeSwitch">
-        <button type="button" class="edit-type-btn" data-value="in">Eingang</button>
-        <button type="button" class="edit-type-btn out" data-value="out">Ausgang</button>
-      </div>
       <select id="editType" class="sr-only" aria-hidden="true">
         <option value="in">Eingang</option>
         <option value="out">Ausgang</option>
       </select>
       <input id="editName" class="giant-input name" placeholder="Name" />
-      <input id="editAmount" class="giant-input amount-input" placeholder="0,00" inputmode="decimal" />
+      <input id="editAmount" class="giant-input amount-input" placeholder="0,00 €" inputmode="decimal" />
       <input id="editDate" class="giant-input date-input" type="date" />
       <label class="open-toggle" id="editOpenWrap">
         <input id="editOpen" type="checkbox" />
@@ -1300,6 +1977,27 @@
     </div>
   </div>
 
+  <div class="modal" id="fullListModal">
+    <div class="modal-card wide">
+      <h3 id="fullListTitle">Alle Einträge</h3>
+      <div class="list" id="fullListContent"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="fullListClose">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="trashModal">
+    <div class="modal-card wide">
+      <h3>Papierkorb</h3>
+      <div class="trash-list" id="trashList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn delete" id="trashClearAll">Alles leeren</button>
+        <button class="modal-btn cancel" id="trashClose">Schließen</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="dateModal">
     <div class="modal-card calendar-card">
       <div class="calendar-header">
@@ -1319,12 +2017,25 @@
     </div>
   </div>
 
+  <div class="undo-toast" id="undoToast" role="status" aria-live="polite">
+    <span id="undoToastText">Gelöscht.</span>
+    <button type="button" id="undoToastBtn">Rückgängig</button>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     // SAFE MODE: minimal, robust local-only logic
     window.SAFE_MODE = false;
   </script>
   <script>
+    document.addEventListener("contextmenu", (event) => {
+      const target = event.target;
+      if (!target || !target.closest) return;
+      if (target.closest("button, .select-btn, .mode-btn, .save-btn, .payout-btn, .soft-btn, .modal-btn")) {
+        event.preventDefault();
+      }
+    });
+
     if (window.SAFE_MODE) {
       const safeStoreKey = "cashflow_safe_v1";
       // Live-Sync (SAFE) optional
@@ -1381,7 +2092,9 @@
       const sumInEl = document.getElementById("sumIn");
       const sumOutEl = document.getElementById("sumOut");
       const saldoBig = document.getElementById("saldoBig");
+      const saldoHeader = document.getElementById("saldoHeader");
       const modeButtons = document.querySelectorAll(".mode-btn");
+      const fxLayer = document.getElementById("fxLayer");
 
       let safeState = safeLoad();
       let safeMode = "in";
@@ -1438,6 +2151,59 @@
         if (safeMode !== "in" && openInput) openInput.checked = false;
       }
 
+      function playSaveFx(type) {
+        if (!fxLayer) return;
+        const source = document.getElementById("saveEntryBtn") || entryZone;
+        if (!source) return;
+        const rect = source.getBoundingClientRect();
+        const baseX = rect.left + rect.width / 2;
+        const baseY = rect.top + Math.min(rect.height * 0.35, 28);
+
+        if (type === "in") {
+          const colors = ["#0070e0", "#003087", "#63b3ff", "#f7a15f", "#ffffff"];
+          for (let i = 0; i < 24; i += 1) {
+            const piece = document.createElement("span");
+            piece.className = "fx-piece confetti";
+            const sx = baseX + (Math.random() - 0.5) * Math.max(rect.width, 120);
+            const sy = baseY + (Math.random() - 0.5) * 18;
+            const dx = (Math.random() - 0.5) * 180;
+            const dy = 80 + Math.random() * 80;
+            piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.setProperty("--sx", `${sx}px`);
+            piece.style.setProperty("--sy", `${sy}px`);
+            piece.style.setProperty("--dx", `${dx}px`);
+            piece.style.setProperty("--dy", `${dy}px`);
+            piece.style.setProperty("--rot", `${(Math.random() - 0.5) * 900}deg`);
+            fxLayer.appendChild(piece);
+            setTimeout(() => piece.remove(), 980);
+          }
+          return;
+        }
+
+        if (entryZone) {
+          entryZone.classList.remove("fx-sad");
+          void entryZone.offsetWidth;
+          entryZone.classList.add("fx-sad");
+          setTimeout(() => entryZone.classList.remove("fx-sad"), 380);
+        }
+        const tones = ["#6a7f99", "#7f93ab", "#8ea3bc"];
+        for (let i = 0; i < 12; i += 1) {
+          const drop = document.createElement("span");
+          drop.className = "fx-piece sad";
+          const sx = baseX + (Math.random() - 0.5) * Math.max(rect.width * 0.9, 90);
+          const sy = baseY - 6 + Math.random() * 12;
+          const dx = (Math.random() - 0.5) * 46;
+          const dy = 72 + Math.random() * 42;
+          drop.style.background = tones[Math.floor(Math.random() * tones.length)];
+          drop.style.setProperty("--sx", `${sx}px`);
+          drop.style.setProperty("--sy", `${sy}px`);
+          drop.style.setProperty("--dx", `${dx}px`);
+          drop.style.setProperty("--dy", `${dy}px`);
+          fxLayer.appendChild(drop);
+          setTimeout(() => drop.remove(), 780);
+        }
+      }
+
       function renderSafe() {
         const inTx = (safeState.transactions || []).filter(tx => tx.type === "in");
         const outTx = (safeState.transactions || []).filter(tx => tx.type === "out");
@@ -1446,6 +2212,7 @@
         if (sumInEl) sumInEl.textContent = safeFormatMoney(sumIn);
         if (sumOutEl) sumOutEl.textContent = safeFormatMoney(sumOut);
         if (saldoBig) saldoBig.textContent = safeFormatMoney(sumIn - sumOut);
+        if (saldoHeader) saldoHeader.textContent = safeFormatMoney(sumIn - sumOut);
 
         const renderList = (items, target, isIn) => {
           if (!target) return;
@@ -1491,6 +2258,10 @@
         if (amountInput) amountInput.value = "";
         if (openInput) openInput.checked = false;
         renderSafe();
+        playSaveFx(entry.type);
+        if (nameInput) {
+          try { nameInput.focus({ preventScroll: true }); } catch (e) { nameInput.focus(); }
+        }
       }
 
       window.setMode = (m) => { safeMode = m; applySafeMode(); };
@@ -1561,6 +2332,7 @@
       lastEvent: null,
       periods: [],
       carryOver: 0,
+      trash: [],
       transactions: []
     };
 
@@ -1579,9 +2351,13 @@
     const openWrap = document.getElementById("openWrap");
     const inList = document.getElementById("inList");
     const outList = document.getElementById("outList");
+    const showAllInBtn = document.getElementById("showAllInBtn");
+    const showAllOutBtn = document.getElementById("showAllOutBtn");
     const sumInEl = document.getElementById("sumIn");
     const sumOutEl = document.getElementById("sumOut");
     const saldoBig = document.getElementById("saldoBig");
+    const saldoHeader = document.getElementById("saldoHeader");
+    const fxLayer = document.getElementById("fxLayer");
     const payoutAmount = document.getElementById("payoutAmount");
     const payoutDate = document.getElementById("payoutDate");
     const payoutForm = document.getElementById("payoutForm");
@@ -1594,6 +2370,10 @@
     const saldoDetails = document.getElementById("saldoDetails");
     const saldoBreakdown = document.getElementById("saldoBreakdown");
     const saldoClose = document.getElementById("saldoClose");
+    const fullListModal = document.getElementById("fullListModal");
+    const fullListTitle = document.getElementById("fullListTitle");
+    const fullListContent = document.getElementById("fullListContent");
+    const fullListClose = document.getElementById("fullListClose");
     const dateModal = document.getElementById("dateModal");
     const calTitle = document.getElementById("calTitle");
     const calGrid = document.getElementById("calGrid");
@@ -1625,10 +2405,26 @@
     const monthOutEl = document.getElementById("monthOut");
     const monthOpenEl = document.getElementById("monthOpen");
     const monthEmpty = document.getElementById("monthEmpty");
+    const syncStatus = document.getElementById("syncStatus");
+    const syncStatusText = document.getElementById("syncStatusText");
+    const trashBtn = document.getElementById("trashBtn");
+    const trashModal = document.getElementById("trashModal");
+    const trashList = document.getElementById("trashList");
+    const trashClose = document.getElementById("trashClose");
+    const trashClearAll = document.getElementById("trashClearAll");
+    const undoToast = document.getElementById("undoToast");
+    const undoToastText = document.getElementById("undoToastText");
+    const undoToastBtn = document.getElementById("undoToastBtn");
+    const backupBtn = document.getElementById("backupBtn");
+    const importBtn = document.getElementById("importBtn");
+    const importFileInput = document.getElementById("importFileInput");
+    const exportBtn = document.getElementById("exportBtn");
 
     const ui = { mode: "in" };
     let editingId = null;
     let selectedMonthKey = "";
+    const TRASH_MAX_ITEMS = 300;
+    const TRASH_TTL_MS = 1000 * 60 * 60 * 24 * 30;
     const selection = {
       in: { active: false, ids: new Set() },
       out: { active: false, ids: new Set() }
@@ -1636,6 +2432,8 @@
 
     let audioCtx = null;
     let activeDateTarget = null;
+    let undoTimer = null;
+    let undoTrashIds = [];
     const calendarState = { year: 0, month: 0, selected: "", original: "" };
 
     const ENABLE_SW = false;
@@ -1671,6 +2469,33 @@
       });
     }
 
+    function setSyncStatus(mode, customText = "") {
+      if (!syncStatus || !syncStatusText) return;
+      const labels = {
+        local: "Lokal",
+        connecting: "Verbinde…",
+        syncing: "Synchronisiere…",
+        live: "Live",
+        error: "Sync-Fehler"
+      };
+      syncStatus.dataset.state = mode;
+      syncStatusText.textContent = customText || labels[mode] || "Lokal";
+    }
+    if (REMOTE_ENABLED) {
+      setSyncStatus(navigator.onLine ? "connecting" : "error", navigator.onLine ? "" : "Offline");
+    } else {
+      setSyncStatus("local");
+    }
+    window.addEventListener("offline", () => setSyncStatus("error", "Offline"));
+    window.addEventListener("online", () => {
+      if (REMOTE_ENABLED) {
+        setSyncStatus("connecting");
+        if (remoteReady) scheduleRemoteSync();
+      } else {
+        setSyncStatus("local");
+      }
+    });
+
     function playCashSound(type) {
       try {
         if (!audioCtx) {
@@ -1705,6 +2530,59 @@
         }
       } catch (error) {
         // ignore audio errors
+      }
+    }
+
+    function playSaveFx(type) {
+      if (!fxLayer) return;
+      const source = saveEntryBtn || entryZone;
+      if (!source) return;
+      const rect = source.getBoundingClientRect();
+      const baseX = rect.left + rect.width / 2;
+      const baseY = rect.top + Math.min(rect.height * 0.35, 28);
+
+      if (type === "in") {
+        const colors = ["#0070e0", "#003087", "#63b3ff", "#f7a15f", "#ffffff"];
+        for (let i = 0; i < 24; i += 1) {
+          const piece = document.createElement("span");
+          piece.className = "fx-piece confetti";
+          const sx = baseX + (Math.random() - 0.5) * Math.max(rect.width, 120);
+          const sy = baseY + (Math.random() - 0.5) * 18;
+          const dx = (Math.random() - 0.5) * 180;
+          const dy = 80 + Math.random() * 80;
+          piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+          piece.style.setProperty("--sx", `${sx}px`);
+          piece.style.setProperty("--sy", `${sy}px`);
+          piece.style.setProperty("--dx", `${dx}px`);
+          piece.style.setProperty("--dy", `${dy}px`);
+          piece.style.setProperty("--rot", `${(Math.random() - 0.5) * 900}deg`);
+          fxLayer.appendChild(piece);
+          setTimeout(() => piece.remove(), 980);
+        }
+        return;
+      }
+
+      if (entryZone) {
+        entryZone.classList.remove("fx-sad");
+        void entryZone.offsetWidth;
+        entryZone.classList.add("fx-sad");
+        setTimeout(() => entryZone.classList.remove("fx-sad"), 380);
+      }
+      const tones = ["#6a7f99", "#7f93ab", "#8ea3bc"];
+      for (let i = 0; i < 12; i += 1) {
+        const drop = document.createElement("span");
+        drop.className = "fx-piece sad";
+        const sx = baseX + (Math.random() - 0.5) * Math.max(rect.width * 0.9, 90);
+        const sy = baseY - 6 + Math.random() * 12;
+        const dx = (Math.random() - 0.5) * 46;
+        const dy = 72 + Math.random() * 42;
+        drop.style.background = tones[Math.floor(Math.random() * tones.length)];
+        drop.style.setProperty("--sx", `${sx}px`);
+        drop.style.setProperty("--sy", `${sy}px`);
+        drop.style.setProperty("--dx", `${dx}px`);
+        drop.style.setProperty("--dy", `${dy}px`);
+        fxLayer.appendChild(drop);
+        setTimeout(() => drop.remove(), 780);
       }
     }
 
@@ -1745,9 +2623,25 @@
     function normalizeState() {
       if (!Array.isArray(state.transactions)) state.transactions = [];
       if (!Array.isArray(state.periods)) state.periods = [];
+      if (!Array.isArray(state.trash)) state.trash = [];
       if (typeof state.carryOver !== "number") state.carryOver = 0;
       if (typeof state.notes !== "string") state.notes = "";
       if (state.lastEvent && typeof state.lastEvent !== "object") state.lastEvent = null;
+      state.trash = state.trash
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          if (!item.id || !item.kind) return null;
+          if (!item.payload || typeof item.payload !== "object") return null;
+          return {
+            id: String(item.id),
+            kind: item.kind === "payout" ? "payout" : "transaction",
+            payload: item.payload,
+            deletedAt: item.deletedAt || new Date().toISOString()
+          };
+        })
+        .filter(Boolean)
+        .slice(0, TRASH_MAX_ITEMS);
+      pruneTrash();
       syncCarryOverFromPeriods();
     }
 
@@ -1764,6 +2658,142 @@
       const latestPeriod = [...state.periods].sort((a, b) => toTimestamp(a) - toTimestamp(b)).pop();
       const nextCarryOver = Number(latestPeriod && latestPeriod.remaining);
       state.carryOver = Number.isFinite(nextCarryOver) ? nextCarryOver : 0;
+    }
+
+    function pruneTrash() {
+      if (!Array.isArray(state.trash)) {
+        state.trash = [];
+        return;
+      }
+      const cutoff = Date.now() - TRASH_TTL_MS;
+      state.trash = state.trash
+        .filter((item) => {
+          const ts = new Date(item.deletedAt || 0).getTime();
+          return Number.isFinite(ts) && ts >= cutoff;
+        })
+        .slice(0, TRASH_MAX_ITEMS);
+    }
+
+    function addTrashEntries(entries) {
+      if (!Array.isArray(entries) || entries.length === 0) return [];
+      if (!Array.isArray(state.trash)) state.trash = [];
+      const nowIso = new Date().toISOString();
+      const added = entries.map((entry) => ({
+        id: createId("trash"),
+        kind: entry.kind === "payout" ? "payout" : "transaction",
+        payload: deepClone(entry.payload),
+        deletedAt: nowIso
+      }));
+      state.trash = [...added, ...state.trash].slice(0, TRASH_MAX_ITEMS);
+      return added.map((item) => item.id);
+    }
+
+    function restoreTrashItems(trashIds) {
+      if (!Array.isArray(trashIds) || trashIds.length === 0) return 0;
+      const idSet = new Set(trashIds);
+      const keep = [];
+      let restored = 0;
+
+      state.trash.forEach((item) => {
+        if (!idSet.has(item.id)) {
+          keep.push(item);
+          return;
+        }
+
+        if (item.kind === "transaction" && item.payload) {
+          const tx = deepClone(item.payload);
+          if (!tx.id || state.transactions.some((existing) => existing.id === tx.id)) {
+            tx.id = createId("tx");
+          }
+          state.transactions.push(tx);
+          restored += 1;
+          return;
+        }
+
+        if (item.kind === "payout" && item.payload) {
+          const period = deepClone(item.payload);
+          if (!period.id || state.periods.some((existing) => existing.id === period.id)) {
+            period.id = createId("period");
+          }
+          state.periods.push(period);
+          restored += 1;
+          return;
+        }
+
+        keep.push(item);
+      });
+
+      state.trash = keep;
+      syncCarryOverFromPeriods();
+      return restored;
+    }
+
+    function clearUndoToast() {
+      undoTrashIds = [];
+      if (undoTimer) clearTimeout(undoTimer);
+      undoTimer = null;
+      if (undoToast) undoToast.classList.remove("active");
+    }
+
+    function openUndoToast(message, trashIds) {
+      if (!undoToast || !undoToastText || !undoToastBtn) return;
+      undoTrashIds = Array.isArray(trashIds) ? trashIds.slice() : [];
+      undoToastText.textContent = message;
+      undoToast.classList.add("active");
+      if (undoTimer) clearTimeout(undoTimer);
+      undoTimer = setTimeout(() => {
+        clearUndoToast();
+      }, 8000);
+    }
+
+    function formatTrashTime(value) {
+      const date = new Date(value || 0);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function renderTrashList() {
+      if (!trashList) return;
+      pruneTrash();
+      const items = [...state.trash].sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+      if (items.length === 0) {
+        trashList.innerHTML = `<p style="color: var(--muted); font-size: 12px;">Papierkorb ist leer.</p>`;
+        return;
+      }
+      trashList.innerHTML = items.map((item) => {
+        const isTx = item.kind === "transaction";
+        const payload = item.payload || {};
+        const title = isTx
+          ? `${payload.name || "Eintrag"} · ${formatMoney(Number(payload.amount) || 0)}`
+          : `Ausschüttung · ${formatMoney(Number(payload.payoutAmount) || 0)}`;
+        const subtitle = isTx
+          ? `${payload.type === "out" ? "Ausgang" : "Eingang"} · ${formatDateLabel(payload.date, payload.createdAt)}`
+          : `${formatDateLabel(payload.date, payload.createdAt)} · Rest ${formatMoney(Number(payload.remaining) || 0)}`;
+        const deletedAtLabel = formatTrashTime(item.deletedAt);
+        return `
+          <div class="trash-item" data-id="${item.id}">
+            <strong>${title}</strong>
+            <div class="meta">${subtitle}</div>
+            <div class="meta">Gelöscht: ${deletedAtLabel}</div>
+            <div class="trash-actions">
+              <button class="select-btn ghost" data-action="restore-trash" data-id="${item.id}" type="button">Wiederherstellen</button>
+              <button class="select-btn danger" data-action="purge-trash" data-id="${item.id}" type="button">Endgültig löschen</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function updateTrashButton() {
+      if (!trashBtn) return;
+      pruneTrash();
+      trashBtn.textContent = `Papierkorb (${state.trash.length})`;
     }
 
     function parseAmount(value) {
@@ -1857,6 +2887,7 @@
 
     function scheduleRemoteSync() {
       if (!REMOTE_ENABLED || !supabase || !remoteReady || isApplyingRemote) return;
+      setSyncStatus("syncing");
       clearTimeout(remoteSyncTimer);
       remoteSyncTimer = setTimeout(syncRemoteState, 250);
     }
@@ -1869,8 +2900,9 @@
           data: state,
           updated_at: new Date().toISOString()
         }, { onConflict: "team" });
+        setSyncStatus("live");
       } catch (error) {
-        // ignore sync errors
+        setSyncStatus("error");
       }
     }
 
@@ -1881,6 +2913,7 @@
       if (notesInput) notesInput.value = state.notes || "";
       isApplyingRemote = false;
       render();
+      if (REMOTE_ENABLED) setSyncStatus("live");
     }
 
     function maybeNotifyRemote(lastEvent) {
@@ -1908,12 +2941,16 @@
           }
           applyRemoteState(incoming);
           maybeNotifyRemote(incoming.lastEvent);
+          setSyncStatus("live");
         })
-        .subscribe();
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") setSyncStatus("live");
+        });
     }
 
     async function initRemote() {
       if (!supabase) return;
+      setSyncStatus("connecting");
       try {
         const { data, error } = await supabase
           .from("cashflow_states")
@@ -1931,8 +2968,9 @@
         }
         remoteReady = true;
         subscribeRemote();
+        setSyncStatus("live");
       } catch (error) {
-        // ignore init errors
+        setSyncStatus("error");
       }
     }
 
@@ -1962,21 +3000,21 @@
       target.innerHTML = items.map(tx => {
         const dateLabel = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
         const openTag = type === "in"
-          ? `<button class="tag ${tx.status === "open" ? "" : "paid"}" data-action="toggle-open" data-id="${tx.id}">${tx.status === "open" ? "Offen" : "Bezahlt"}</button>`
+          ? `<button class="tag ${tx.status === "open" ? "open" : "paid"}" data-action="toggle-open" data-id="${tx.id}" aria-label="${tx.status === "open" ? "Offen" : "Bezahlt"}">${tx.status === "open" ? "Offen" : "Bezahlt"}</button>`
           : "";
         const checkbox = isSelecting
           ? `<input class="select-box" type="checkbox" data-id="${tx.id}" ${selection[type].ids.has(tx.id) ? "checked" : ""} />`
           : "";
         return `
-          <div class="item" data-id="${tx.id}">
-            <div style="display:flex; gap:10px; align-items:center;">
+          <div class="item" data-id="${tx.id}" data-type="${tx.type}">
+            <div class="item-main">
               ${checkbox}
-              <div>
+              <div class="item-text">
                 <h4>${tx.name}</h4>
                 <small>${dateLabel}</small>
               </div>
             </div>
-            <div style="text-align:right;">
+            <div class="item-side">
               <div class="amount-row">
                 ${openTag}
                 <div class="amount">${formatMoney(tx.amount)}</div>
@@ -1985,6 +3023,41 @@
           </div>
         `;
       }).join("") || `<p style="color: var(--muted); font-size: 12px;">Noch keine Eintraege.</p>`;
+    }
+
+    function updateShowAllButtons() {
+      const inCount = state.transactions.filter(tx => tx.type === "in").length;
+      const outCount = state.transactions.filter(tx => tx.type === "out").length;
+      if (showAllInBtn) showAllInBtn.classList.toggle("is-hidden", inCount <= 20);
+      if (showAllOutBtn) showAllOutBtn.classList.toggle("is-hidden", outCount <= 20);
+    }
+
+    function openFullList(type) {
+      if (!fullListModal || !fullListContent || !fullListTitle) return;
+      const title = type === "in" ? "Alle Eingänge" : "Alle Ausgänge";
+      const items = sortedTransactions().filter(tx => tx.type === type);
+      fullListTitle.textContent = title;
+      fullListContent.innerHTML = items.map(tx => {
+        const date = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
+        const status = type === "in" ? (tx.status === "open" ? "Offen" : "Bezahlt") : "";
+        const meta = [date, status].filter(Boolean).join(" · ");
+        return `
+          <div class="item" data-type="${tx.type}">
+            <div class="item-main">
+              <div class="item-text">
+                <h4>${tx.name}</h4>
+                <small>${meta}</small>
+              </div>
+            </div>
+            <div class="item-side">
+              <div class="amount-row">
+                <div class="amount">${formatMoney(tx.amount)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("") || `<p style="color: var(--muted); font-size: 12px;">Keine Eintraege.</p>`;
+      fullListModal.classList.add("active");
     }
 
     function renderPayouts() {
@@ -1996,14 +3069,11 @@
       payoutLinks.innerHTML = periods.map(period => {
         const dateLabel = formatDateLabel(period.date, period.createdAt);
         return `
-          <div class="payout-row" data-id="${period.id}">
-            <button class="payout-link" type="button" data-id="${period.id}">
-              <strong>${dateLabel}</strong>
-              <span class="payout-out">Ausgeschüttet: ${formatMoney(period.payoutAmount)}</span>
-              <span class="payout-rest">Rest: ${formatMoney(period.remaining)}</span>
-            </button>
-            <button class="payout-delete" type="button" data-action="delete-payout" data-id="${period.id}" aria-label="Ausschüttung löschen">Löschen</button>
-          </div>
+          <button class="payout-link" type="button" data-id="${period.id}">
+            <strong>${dateLabel}</strong>
+            <span class="payout-out">Ausgeschüttet: ${formatMoney(period.payoutAmount)}</span>
+            <span class="payout-rest">Rest: ${formatMoney(period.remaining)}</span>
+          </button>
         `;
       }).join("");
     }
@@ -2019,6 +3089,7 @@
       sumInEl.textContent = formatMoney(sumInPaid);
       sumOutEl.textContent = formatMoney(sumOut);
       saldoBig.textContent = formatMoney(balance);
+      if (saldoHeader) saldoHeader.textContent = formatMoney(balance);
       renderPayouts();
     }
 
@@ -2042,7 +3113,7 @@
 
       saldoDetails.innerHTML = `
         <div class="row"><span>Rest aus letzter Ausschüttung</span><strong>${formatMoney(state.carryOver)}</strong></div>
-        <div class="row"><span>Summe Eingang (bezahlt)</span><strong>${formatMoney(sumInPaid)}</strong></div>
+        <div class="row"><span>Summe Eingang</span><strong>${formatMoney(sumInPaid)}</strong></div>
         <div class="row"><span>Summe Ausgang</span><strong>${formatMoney(sumOut)}</strong></div>
         <div class="row"><span>Offen (nicht im Saldo)</span><strong>${formatMoney(sumOpen)}</strong></div>
         <div class="row"><span>Saldo insgesamt</span><strong>${formatMoney(balance)}</strong></div>
@@ -2140,6 +3211,11 @@
       updateSums();
       renderMonthly();
       updateSelectionControls();
+      updateShowAllButtons();
+      updateTrashButton();
+      if (trashModal && trashModal.classList.contains("active")) {
+        renderTrashList();
+      }
     }
 
     function applyMode() {
@@ -2238,6 +3314,12 @@
       if (!isIn) editOpen.checked = false;
     }
 
+    function updateEditTheme() {
+      if (!editModal) return;
+      editModal.classList.toggle("modal-out", editType.value === "out");
+      editModal.classList.toggle("modal-in", editType.value === "in");
+    }
+
     function syncEditTypeButtons() {
       if (!editTypeSwitch) return;
       editTypeSwitch.querySelectorAll(".edit-type-btn").forEach(btn => {
@@ -2249,6 +3331,7 @@
       editType.value = value;
       syncEditTypeButtons();
       updateEditVisibility();
+      updateEditTheme();
     }
 
     function openEdit(id) {
@@ -2262,10 +3345,13 @@
       editOpen.checked = entry.type === "in" && entry.status === "open";
       syncEditTypeButtons();
       updateEditVisibility();
+      updateEditTheme();
       editModal.classList.add("active");
     }
 
     function closeEdit() {
+      editModal.classList.remove("modal-in");
+      editModal.classList.remove("modal-out");
       editModal.classList.remove("active");
       editingId = null;
     }
@@ -2307,10 +3393,14 @@
       openInput.checked = false;
       render();
       playCashSound(ui.mode);
+      playSaveFx(entry.type);
       entryZone.classList.remove("saved");
       void entryZone.offsetWidth;
       entryZone.classList.add("saved");
       setTimeout(() => entryZone.classList.remove("saved"), 400);
+      if (nameInput) {
+        try { nameInput.focus({ preventScroll: true }); } catch (e) { nameInput.focus(); }
+      }
     }
     window.handleEntrySave = handleEntrySave;
 
@@ -2424,6 +3514,82 @@
       render();
     });
 
+    if (showAllInBtn) {
+      showAllInBtn.addEventListener("click", () => openFullList("in"));
+    }
+    if (showAllOutBtn) {
+      showAllOutBtn.addEventListener("click", () => openFullList("out"));
+    }
+    if (fullListClose) {
+      fullListClose.addEventListener("click", () => {
+        fullListModal.classList.remove("active");
+      });
+    }
+    if (fullListModal) {
+      fullListModal.addEventListener("click", (event) => {
+        if (event.target === fullListModal) fullListModal.classList.remove("active");
+      });
+    }
+
+    if (trashBtn && trashModal) {
+      trashBtn.addEventListener("click", () => {
+        renderTrashList();
+        trashModal.classList.add("active");
+      });
+    }
+    if (trashClose && trashModal) {
+      trashClose.addEventListener("click", () => trashModal.classList.remove("active"));
+    }
+    if (trashModal) {
+      trashModal.addEventListener("click", (event) => {
+        if (event.target === trashModal) trashModal.classList.remove("active");
+      });
+    }
+    if (trashList) {
+      trashList.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-action]");
+        if (!btn) return;
+        const trashId = btn.dataset.id;
+        if (!trashId) return;
+        if (btn.dataset.action === "restore-trash") {
+          const restored = restoreTrashItems([trashId]);
+          if (restored > 0) {
+            saveState();
+            render();
+          }
+          return;
+        }
+        if (btn.dataset.action === "purge-trash") {
+          state.trash = state.trash.filter((item) => item.id !== trashId);
+          saveState();
+          render();
+        }
+      });
+    }
+    if (trashClearAll) {
+      trashClearAll.addEventListener("click", () => {
+        if (!state.trash.length) return;
+        if (!confirm("Papierkorb vollständig leeren?")) return;
+        state.trash = [];
+        saveState();
+        render();
+      });
+    }
+    if (undoToastBtn) {
+      undoToastBtn.addEventListener("click", () => {
+        if (!undoTrashIds.length) {
+          clearUndoToast();
+          return;
+        }
+        const restored = restoreTrashItems(undoTrashIds);
+        clearUndoToast();
+        if (restored > 0) {
+          saveState();
+          render();
+        }
+      });
+    }
+
     document.querySelectorAll(".panel-actions").forEach(actions => {
       actions.addEventListener("click", (event) => {
         const btn = event.target.closest("button");
@@ -2450,10 +3616,15 @@
           const ids = selection[type].ids;
           if (ids.size === 0) return;
           if (!confirm("Ausgewählte Einträge wirklich löschen?")) return;
+          const removed = state.transactions.filter(tx => tx.type === type && ids.has(tx.id));
           state.transactions = state.transactions.filter(tx => !(tx.type === type && ids.has(tx.id)));
+          const trashIds = addTrashEntries(removed.map((tx) => ({ kind: "transaction", payload: tx })));
           selection[type].ids.clear();
           saveState();
           render();
+          if (trashIds.length > 0) {
+            openUndoToast(`${removed.length} Eintrag${removed.length === 1 ? "" : "e"} gelöscht.`, trashIds);
+          }
         }
       });
     });
@@ -2461,6 +3632,7 @@
     editType.addEventListener("change", () => {
       syncEditTypeButtons();
       updateEditVisibility();
+      updateEditTheme();
     });
     if (editTypeSwitch) {
       editTypeSwitch.addEventListener("click", (event) => {
@@ -2478,10 +3650,12 @@
       if (!confirm("Eintrag wirklich löschen?")) return;
       const index = state.transactions.findIndex(tx => tx.id === editingId);
       if (index === -1) return;
-      state.transactions.splice(index, 1);
+      const removed = state.transactions.splice(index, 1)[0];
+      const trashIds = removed ? addTrashEntries([{ kind: "transaction", payload: removed }]) : [];
       saveState();
       closeEdit();
       render();
+      if (trashIds.length > 0) openUndoToast("Eintrag gelöscht.", trashIds);
     });
     editSave.addEventListener("click", () => {
       if (!editingId) return;
@@ -2511,10 +3685,12 @@
     function deletePayoutPeriod(periodId) {
       const index = state.periods.findIndex(p => p.id === periodId);
       if (index === -1) return;
-      state.periods.splice(index, 1);
+      const removed = state.periods.splice(index, 1)[0];
+      const trashIds = removed ? addTrashEntries([{ kind: "payout", payload: removed }]) : [];
       syncCarryOverFromPeriods();
       saveState();
       render();
+      if (trashIds.length > 0) openUndoToast("Ausschüttung gelöscht.", trashIds);
     }
 
     function clearPayoutPress() {
@@ -2557,14 +3733,6 @@
         payoutPressFired = false;
         return;
       }
-      const deleteButton = event.target.closest('[data-action="delete-payout"]');
-      if (deleteButton) {
-        const periodId = deleteButton.dataset.id;
-        if (!periodId) return;
-        if (!confirm("Gewinnausschüttung wirklich löschen?")) return;
-        deletePayoutPeriod(periodId);
-        return;
-      }
       const button = event.target.closest(".payout-link");
       if (!button) return;
       const period = state.periods.find(p => p.id === button.dataset.id);
@@ -2577,7 +3745,7 @@
           <div class="sum-block sum-rest"><span>Rest</span><strong>${formatMoney(period.remaining)}</strong></div>
         </div>
         <div>Datum: ${dateLabel}</div>
-        <div>Summe Eingang (bezahlt): ${formatMoney(period.sumIn)} · Summe Ausgang: ${formatMoney(period.sumOut)}</div>
+        <div>Summe Eingang: ${formatMoney(period.sumIn)} · Summe Ausgang: ${formatMoney(period.sumOut)}</div>
         <div>Einträge: ${period.transactions.length}</div>
       `;
       payoutTxList.innerHTML = period.transactions.map(tx => {
@@ -2722,33 +3890,79 @@
       });
     });
 
-    document.getElementById("exportBtn").addEventListener("click", () => {
-      const header = ["ID","Typ","Name","Betrag","Status","Datum"];
-      const txRows = state.transactions.map(tx => [
-        tx.id,
-        tx.type,
-        tx.name,
-        tx.amount,
-        tx.status,
-        tx.date
-      ]);
-      const payoutRows = (state.periods || []).map(p => [
-        p.id,
-        "payout",
-        "Gewinnausschüttung",
-        p.payoutAmount,
-        "done",
-        p.date
-      ]);
-      const rows = [...txRows, ...payoutRows];
-      const csv = [header, ...rows].map(row => row.map(value => `"${value}"`).join(",")).join("\n");
-      const blob = new Blob([csv], { type: "text/csv" });
+    function downloadBlob(filename, blob) {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `kassa_notiz_${new Date().toISOString().slice(0,10)}.csv`;
+      link.download = filename;
       link.click();
       URL.revokeObjectURL(link.href);
-    });
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => {
+        const header = ["ID","Typ","Name","Betrag","Status","Datum"];
+        const txRows = state.transactions.map(tx => [
+          tx.id,
+          tx.type,
+          tx.name,
+          tx.amount,
+          tx.status,
+          tx.date
+        ]);
+        const payoutRows = (state.periods || []).map(p => [
+          p.id,
+          "payout",
+          "Gewinnausschüttung",
+          p.payoutAmount,
+          "done",
+          p.date
+        ]);
+        const rows = [...txRows, ...payoutRows];
+        const csv = [header, ...rows].map(row => row.map(value => `"${value}"`).join(",")).join("\n");
+        downloadBlob(`kassa_notiz_${new Date().toISOString().slice(0,10)}.csv`, new Blob([csv], { type: "text/csv" }));
+      });
+    }
+
+    if (backupBtn) {
+      backupBtn.addEventListener("click", () => {
+        const payload = {
+          app: "cashflow",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          team: TEAM_CODE,
+          data: state
+        };
+        const json = JSON.stringify(payload, null, 2);
+        downloadBlob(`cashflow_backup_${new Date().toISOString().slice(0, 10)}.json`, new Blob([json], { type: "application/json" }));
+      });
+    }
+
+    if (importBtn && importFileInput) {
+      importBtn.addEventListener("click", () => importFileInput.click());
+      importFileInput.addEventListener("change", async () => {
+        const file = importFileInput.files && importFileInput.files[0];
+        importFileInput.value = "";
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          const imported = parsed && parsed.data ? parsed.data : parsed;
+          if (!imported || typeof imported !== "object" || !Array.isArray(imported.transactions)) {
+            alert("Ungültige Backup-Datei.");
+            return;
+          }
+          if (!confirm("Backup wirklich laden? Aktuelle Daten werden ersetzt.")) return;
+          state = { ...deepClone(defaultState), ...imported };
+          normalizeState();
+          if (notesInput) notesInput.value = state.notes || "";
+          saveState();
+          render();
+          if (REMOTE_ENABLED) scheduleRemoteSync();
+        } catch (error) {
+          alert("Backup konnte nicht geladen werden.");
+        }
+      });
+    }
 
     const today = new Date().toISOString().slice(0, 10);
     dateInput.value = today;
