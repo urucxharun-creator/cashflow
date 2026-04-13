@@ -36,8 +36,6 @@
       --radius: 20px;
       --font-display: "Space Grotesk", "Sora", "Avenir Next", "Poppins", sans-serif;
       --font-body: "Manrope", "Sora", "Avenir Next", "Segoe UI", sans-serif;
-      --list-height-desktop: 320px;
-      --list-height-mobile: 340px;
     }
     * { box-sizing: border-box; }
     body {
@@ -52,6 +50,13 @@
         radial-gradient(circle at 90% 0%, rgba(0, 48, 135, 0.24), transparent 40%),
         radial-gradient(circle at 50% 100%, rgba(0, 161, 224, 0.22), transparent 55%),
         linear-gradient(130deg, #d4e3f8 0%, var(--bg-2) 58%, #e6eefb 100%);
+    }
+    body.modal-open {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
     }
     body::before,
     body::after {
@@ -132,19 +137,6 @@
     h1, h2, h3 { margin: 0; font-family: var(--font-display); }
     p { margin: 0; }
     button, input, select { font-family: inherit; }
-    button,
-    .select-btn,
-    .mode-btn,
-    .save-btn,
-    .payout-btn,
-    .soft-btn,
-    .modal-btn {
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
 
     .fx-layer {
       position: fixed;
@@ -587,7 +579,7 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
-      align-items: stretch;
+      align-items: start;
     }
     .card {
       background: linear-gradient(160deg, rgba(233, 242, 255, 0.95), rgba(214, 227, 247, 0.9));
@@ -596,11 +588,11 @@
       border: 1px solid rgba(210, 225, 247, 0.9);
       padding: 14px;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      grid-auto-rows: max-content;
       gap: 12px;
       min-width: 0;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-      height: 100%;
+      align-content: start;
     }
     .card.card-in {
       border: 1px solid rgba(0, 112, 224, 0.24);
@@ -666,9 +658,7 @@
       min-height: 34px;
     }
     .show-all-btn.is-hidden {
-      visibility: hidden;
-      pointer-events: none;
-      opacity: 0;
+      display: none;
     }
     .card.card-in .show-all-btn {
       border-color: rgba(0, 112, 224, 0.28);
@@ -688,9 +678,9 @@
     .list {
       display: grid;
       gap: 8px;
-      height: var(--list-height-desktop);
-      max-height: var(--list-height-desktop);
-      overflow: auto;
+      height: auto;
+      max-height: none;
+      overflow: visible;
       padding-right: 4px;
     }
     .item {
@@ -766,6 +756,12 @@
       background: rgba(22, 163, 74, 0.14);
       color: #166534;
       border-color: rgba(22, 163, 74, 0.34);
+    }
+    .tag.settled {
+      background: rgba(37, 99, 235, 0.12);
+      color: #1d4ed8;
+      border-color: rgba(37, 99, 235, 0.28);
+      cursor: default;
     }
     .sum-row {
       display: grid;
@@ -1252,6 +1248,8 @@
       justify-content: center;
       padding: 20px;
       z-index: 10;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
     }
     .modal.active { display: flex; }
     .modal-card {
@@ -1263,37 +1261,10 @@
       box-shadow: 0 24px 48px rgba(0, 20, 56, 0.34), 0 0 24px rgba(0, 112, 224, 0.24);
       display: grid;
       gap: 12px;
-    }
-    #editModal.modal-in .modal-card {
-      background: linear-gradient(160deg, rgba(232, 242, 255, 0.98), rgba(207, 224, 248, 0.96));
-      border-color: rgba(0, 112, 224, 0.3);
-      box-shadow: 0 24px 48px rgba(0, 20, 56, 0.34), 0 0 24px rgba(0, 112, 224, 0.24);
-    }
-    #editModal.modal-in .modal-card h3 {
-      color: var(--accent-2);
-    }
-    #editModal.modal-in .modal-btn.save {
-      background: linear-gradient(135deg, var(--accent-2), var(--accent));
-      border-color: rgba(255, 255, 255, 0.34);
-      color: #ffffff;
-    }
-    #editModal.modal-out .modal-card {
-      background: linear-gradient(160deg, rgba(255, 236, 220, 0.98), rgba(250, 211, 179, 0.96));
-      border-color: rgba(255, 159, 90, 0.42);
-      box-shadow: 0 24px 48px rgba(100, 44, 9, 0.28), 0 0 24px rgba(255, 159, 90, 0.24);
-    }
-    #editModal.modal-out .modal-card h3 {
-      color: #a14b16;
-    }
-    #editModal.modal-out .open-toggle {
-      color: #8b3f12;
-      background: linear-gradient(130deg, rgba(255, 167, 102, 0.22), rgba(255, 204, 161, 0.26));
-      border-color: rgba(255, 159, 90, 0.44);
-    }
-    #editModal.modal-out .modal-btn.save {
-      background: linear-gradient(135deg, #c45a1c, #f79d5a);
-      border-color: rgba(255, 255, 255, 0.36);
-      color: #ffffff;
+      max-height: min(88vh, 820px);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
     .modal-card.wide { width: min(560px, 94vw); }
     #fullListContent {
@@ -1652,10 +1623,11 @@
         font-size: 10px;
         border-radius: 8px;
       }
-      .list { max-height: 300px; gap: 3px; padding-right: 0; }
       .list {
-        height: var(--list-height-mobile);
-        max-height: var(--list-height-mobile);
+        height: auto;
+        max-height: none;
+        gap: 3px;
+        padding-right: 0;
       }
       .item {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -1690,6 +1662,7 @@
       }
       .tag.open { background: #ef4444; }
       .tag.paid { display: none; }
+      .tag.settled { background: #2563eb; }
       .sum-row {
         font-size: 10.5px;
         gap: 4px;
@@ -1807,7 +1780,7 @@
 
       <form id="entryForm" class="entry-form" autocomplete="off" novalidate>
         <input id="nameInput" class="giant-input name" placeholder="Name / Kunde" required />
-        <input id="amountInput" class="giant-input amount-input" placeholder="0,00 €" required inputmode="decimal" />
+        <input id="amountInput" class="giant-input amount-input" placeholder="0,00" required inputmode="decimal" />
         <input id="dateInput" class="giant-input date-input" type="date" />
         <label class="open-toggle" id="openWrap">
           <input id="openInput" type="checkbox" />
@@ -1864,7 +1837,7 @@
       <div class="payout-card">
         <form class="payout-form" id="payoutForm" autocomplete="off">
           <h4>Gewinnausschüttung</h4>
-          <input id="payoutAmount" class="giant-input amount-input" placeholder="Betrag €" inputmode="decimal" />
+          <input id="payoutAmount" class="giant-input amount-input" placeholder="Betrag" inputmode="decimal" />
           <input id="payoutDate" class="giant-input date-input" type="date" />
           <button class="payout-btn" id="payoutSave" type="submit">Ausschüttung speichern</button>
         </form>
@@ -1936,12 +1909,16 @@
   <div class="modal" id="editModal">
     <div class="modal-card">
       <h3>Eintrag bearbeiten</h3>
+      <div class="edit-type-switch" id="editTypeSwitch">
+        <button type="button" class="edit-type-btn" data-value="in">Eingang</button>
+        <button type="button" class="edit-type-btn out" data-value="out">Ausgang</button>
+      </div>
       <select id="editType" class="sr-only" aria-hidden="true">
         <option value="in">Eingang</option>
         <option value="out">Ausgang</option>
       </select>
       <input id="editName" class="giant-input name" placeholder="Name" />
-      <input id="editAmount" class="giant-input amount-input" placeholder="0,00 €" inputmode="decimal" />
+      <input id="editAmount" class="giant-input amount-input" placeholder="0,00" inputmode="decimal" />
       <input id="editDate" class="giant-input date-input" type="date" />
       <label class="open-toggle" id="editOpenWrap">
         <input id="editOpen" type="checkbox" />
@@ -2028,14 +2005,6 @@
     window.SAFE_MODE = false;
   </script>
   <script>
-    document.addEventListener("contextmenu", (event) => {
-      const target = event.target;
-      if (!target || !target.closest) return;
-      if (target.closest("button, .select-btn, .mode-btn, .save-btn, .payout-btn, .soft-btn, .modal-btn")) {
-        event.preventDefault();
-      }
-    });
-
     if (window.SAFE_MODE) {
       const safeStoreKey = "cashflow_safe_v1";
       // Live-Sync (SAFE) optional
@@ -2419,6 +2388,7 @@
     const importBtn = document.getElementById("importBtn");
     const importFileInput = document.getElementById("importFileInput");
     const exportBtn = document.getElementById("exportBtn");
+    const modalNodes = [editModal, payoutModal, saldoModal, fullListModal, dateModal, trashModal].filter(Boolean);
 
     const ui = { mode: "in" };
     let editingId = null;
@@ -2434,7 +2404,32 @@
     let activeDateTarget = null;
     let undoTimer = null;
     let undoTrashIds = [];
+    let lockedScrollY = 0;
     const calendarState = { year: 0, month: 0, selected: "", original: "" };
+
+    function syncBodyModalLock() {
+      const hasOpenModal = modalNodes.some((node) => node.classList.contains("active"));
+      if (hasOpenModal) {
+        if (!document.body.classList.contains("modal-open")) {
+          lockedScrollY = window.scrollY || window.pageYOffset || 0;
+          document.body.style.top = `-${lockedScrollY}px`;
+          document.body.classList.add("modal-open");
+        }
+        return;
+      }
+      if (!document.body.classList.contains("modal-open")) return;
+      document.body.classList.remove("modal-open");
+      document.body.style.top = "";
+      window.scrollTo(0, lockedScrollY);
+    }
+
+    if (modalNodes.length) {
+      const modalObserver = new MutationObserver(syncBodyModalLock);
+      modalNodes.forEach((node) => {
+        modalObserver.observe(node, { attributes: true, attributeFilter: ["class"] });
+      });
+      syncBodyModalLock();
+    }
 
     const ENABLE_SW = false;
     if (!ENABLE_SW && "serviceWorker" in navigator) {
@@ -2712,6 +2707,14 @@
 
         if (item.kind === "payout" && item.payload) {
           const period = deepClone(item.payload);
+          const periodTransactionIds = new Set(
+            (Array.isArray(period.transactions) ? period.transactions : [])
+              .map((tx) => tx && tx.id)
+              .filter(Boolean)
+          );
+          if (periodTransactionIds.size > 0) {
+            state.transactions = state.transactions.filter((tx) => !periodTransactionIds.has(tx.id));
+          }
           if (!period.id || state.periods.some((existing) => existing.id === period.id)) {
             period.id = createId("period");
           }
@@ -2978,12 +2981,34 @@
       return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
     }
 
-    function sortedTransactions() {
-      return [...state.transactions].sort((a, b) => {
+    function sortTransactionsByDate(items) {
+      return [...items].sort((a, b) => {
         const aDate = new Date(a.createdAt || `${a.date}T00:00:00`);
         const bDate = new Date(b.createdAt || `${b.date}T00:00:00`);
         return bDate - aDate;
       });
+    }
+
+    function buildVisibleTransactions() {
+      const visible = [...state.transactions];
+      const seen = new Set(visible.map((tx) => tx.id));
+      (state.periods || []).forEach((period) => {
+        (period && Array.isArray(period.transactions) ? period.transactions : []).forEach((tx) => {
+          if (!tx || !tx.id || seen.has(tx.id)) return;
+          seen.add(tx.id);
+          visible.push({
+            ...deepClone(tx),
+            archivedInPeriodId: period.id
+          });
+        });
+      });
+      return visible;
+    }
+
+    function sortedTransactions(options = {}) {
+      const includeArchived = options.includeArchived !== false;
+      const items = includeArchived ? buildVisibleTransactions() : [...state.transactions];
+      return sortTransactionsByDate(items);
     }
 
     function pruneSelection(type, ids) {
@@ -2996,27 +3021,30 @@
     function renderList(type, target) {
       const items = sortedTransactions().filter(tx => tx.type === type);
       const isSelecting = selection[type].active;
-      pruneSelection(type, items.map(tx => tx.id));
+      pruneSelection(type, items.filter(tx => !tx.archivedInPeriodId).map(tx => tx.id));
       target.innerHTML = items.map(tx => {
         const dateLabel = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
-        const openTag = type === "in"
+        const meta = [dateLabel, tx.archivedInPeriodId ? "Abgerechnet" : ""].filter(Boolean).join(" · ");
+        const statusTag = tx.archivedInPeriodId
+          ? `<span class="tag settled" title="Bereits in einer Gewinnausschüttung enthalten">Abgerechnet</span>`
+          : type === "in"
           ? `<button class="tag ${tx.status === "open" ? "open" : "paid"}" data-action="toggle-open" data-id="${tx.id}" aria-label="${tx.status === "open" ? "Offen" : "Bezahlt"}">${tx.status === "open" ? "Offen" : "Bezahlt"}</button>`
           : "";
-        const checkbox = isSelecting
+        const checkbox = isSelecting && !tx.archivedInPeriodId
           ? `<input class="select-box" type="checkbox" data-id="${tx.id}" ${selection[type].ids.has(tx.id) ? "checked" : ""} />`
           : "";
         return `
-          <div class="item" data-id="${tx.id}" data-type="${tx.type}">
+          <div class="item${tx.archivedInPeriodId ? " archived" : ""}" data-id="${tx.id}" data-type="${tx.type}" data-archived="${tx.archivedInPeriodId ? "true" : "false"}">
             <div class="item-main">
               ${checkbox}
               <div class="item-text">
                 <h4>${tx.name}</h4>
-                <small>${dateLabel}</small>
+                <small>${meta}</small>
               </div>
             </div>
             <div class="item-side">
               <div class="amount-row">
-                ${openTag}
+                ${statusTag}
                 <div class="amount">${formatMoney(tx.amount)}</div>
               </div>
             </div>
@@ -3026,8 +3054,9 @@
     }
 
     function updateShowAllButtons() {
-      const inCount = state.transactions.filter(tx => tx.type === "in").length;
-      const outCount = state.transactions.filter(tx => tx.type === "out").length;
+      const allTransactions = sortedTransactions();
+      const inCount = allTransactions.filter(tx => tx.type === "in").length;
+      const outCount = allTransactions.filter(tx => tx.type === "out").length;
       if (showAllInBtn) showAllInBtn.classList.toggle("is-hidden", inCount <= 20);
       if (showAllOutBtn) showAllOutBtn.classList.toggle("is-hidden", outCount <= 20);
     }
@@ -3039,10 +3068,14 @@
       fullListTitle.textContent = title;
       fullListContent.innerHTML = items.map(tx => {
         const date = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
-        const status = type === "in" ? (tx.status === "open" ? "Offen" : "Bezahlt") : "";
+        const status = tx.archivedInPeriodId
+          ? "Abgerechnet"
+          : type === "in"
+          ? (tx.status === "open" ? "Offen" : "Bezahlt")
+          : "";
         const meta = [date, status].filter(Boolean).join(" · ");
         return `
-          <div class="item" data-type="${tx.type}">
+          <div class="item${tx.archivedInPeriodId ? " archived" : ""}" data-type="${tx.type}">
             <div class="item-main">
               <div class="item-text">
                 <h4>${tx.name}</h4>
@@ -3314,12 +3347,6 @@
       if (!isIn) editOpen.checked = false;
     }
 
-    function updateEditTheme() {
-      if (!editModal) return;
-      editModal.classList.toggle("modal-out", editType.value === "out");
-      editModal.classList.toggle("modal-in", editType.value === "in");
-    }
-
     function syncEditTypeButtons() {
       if (!editTypeSwitch) return;
       editTypeSwitch.querySelectorAll(".edit-type-btn").forEach(btn => {
@@ -3331,7 +3358,6 @@
       editType.value = value;
       syncEditTypeButtons();
       updateEditVisibility();
-      updateEditTheme();
     }
 
     function openEdit(id) {
@@ -3345,13 +3371,10 @@
       editOpen.checked = entry.type === "in" && entry.status === "open";
       syncEditTypeButtons();
       updateEditVisibility();
-      updateEditTheme();
       editModal.classList.add("active");
     }
 
     function closeEdit() {
-      editModal.classList.remove("modal-in");
-      editModal.classList.remove("modal-out");
       editModal.classList.remove("active");
       editingId = null;
     }
@@ -3468,7 +3491,7 @@
       const listType = listEl && listEl.dataset ? listEl.dataset.list : null;
       if (listType && selection[listType] && selection[listType].active) return;
       const item = event.target.closest(".item");
-      if (!item) return;
+      if (!item || item.dataset.archived === "true") return;
       pressTimer = setTimeout(() => openEdit(item.dataset.id), 450);
     }
     function handlePressEnd() {
@@ -3632,7 +3655,6 @@
     editType.addEventListener("change", () => {
       syncEditTypeButtons();
       updateEditVisibility();
-      updateEditTheme();
     });
     if (editTypeSwitch) {
       editTypeSwitch.addEventListener("click", (event) => {
@@ -3686,6 +3708,14 @@
       const index = state.periods.findIndex(p => p.id === periodId);
       if (index === -1) return;
       const removed = state.periods.splice(index, 1)[0];
+      if (removed && Array.isArray(removed.transactions)) {
+        const existingIds = new Set(state.transactions.map((tx) => tx.id));
+        removed.transactions.forEach((tx) => {
+          if (!tx || !tx.id || existingIds.has(tx.id)) return;
+          existingIds.add(tx.id);
+          state.transactions.push(deepClone(tx));
+        });
+      }
       const trashIds = removed ? addTrashEntries([{ kind: "payout", payload: removed }]) : [];
       syncCarryOverFromPeriods();
       saveState();
