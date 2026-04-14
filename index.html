@@ -2261,13 +2261,31 @@
     const storeKey = "kassa_notiz_v1";
     const storage = {
       get(key) {
-        try { return localStorage.getItem(key); } catch (e) { return null; }
+        try {
+          const localValue = localStorage.getItem(key);
+          if (localValue !== null) return localValue;
+        } catch (e) {}
+        try {
+          return sessionStorage.getItem(key);
+        } catch (e) {
+          return null;
+        }
       },
       set(key, value) {
-        try { localStorage.setItem(key, value); } catch (e) {}
+        let stored = false;
+        try {
+          localStorage.setItem(key, value);
+          stored = true;
+        } catch (e) {}
+        try {
+          sessionStorage.setItem(key, value);
+          stored = true;
+        } catch (e) {}
+        return stored;
       },
       remove(key) {
         try { localStorage.removeItem(key); } catch (e) {}
+        try { sessionStorage.removeItem(key); } catch (e) {}
       }
     };
     // Live-Sync aktiv
@@ -2298,16 +2316,230 @@
     const defaultState = {
       currency: "EUR",
       notes: "",
+      notesUpdatedAt: "",
       lastEvent: null,
       periods: [],
+      periodVault: [],
       carryOver: 0,
       trash: [],
-      transactions: []
+      transactions: [],
+      transactionVault: [],
+      updatedAt: ""
     };
 
     const deepClone = typeof structuredClone === "function"
       ? structuredClone
       : (value) => JSON.parse(JSON.stringify(value));
+
+    const backupStoreKey = `${storeKey}_shadow`;
+    const snapshotStoreKey = `${storeKey}_snapshots`;
+    const MAX_STATE_SNAPSHOTS = 12;
+    const SNAPSHOT_INTERVAL_MS = 15000;
+    let lastSnapshotAt = 0;
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function parseJsonSafely(raw) {
+      if (!raw || typeof raw !== "string") return null;
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function toTimestamp(...values) {
+      for (const value of values) {
+        const ts = new Date(value || 0).getTime();
+        if (Number.isFinite(ts) && ts > 0) return ts;
+      }
+      return 0;
+    }
+
+    function toIsoFromTimestamp(ts) {
+      if (!Number.isFinite(ts) || ts <= 0) return "";
+      try {
+        return new Date(ts).toISOString();
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function latestIso(...values) {
+      return toIsoFromTimestamp(Math.max(...values.map((value) => toTimestamp(value))));
+    }
+
+    function recordTimestamp(record) {
+      if (!record || typeof record !== "object") return 0;
+      return toTimestamp(
+        record.updatedAt,
+        record.removedAt,
+        record.deletedAt,
+        record.createdAt,
+        record.at,
+        record.date
+      );
+    }
+
+    function isNewerRecord(nextRecord, currentRecord) {
+      const nextTs = recordTimestamp(nextRecord);
+      const currentTs = recordTimestamp(currentRecord);
+      if (nextTs !== currentTs) return nextTs > currentTs;
+      const nextRemoved = Boolean(nextRecord && nextRecord.removedAt);
+      const currentRemoved = Boolean(currentRecord && currentRecord.removedAt);
+      if (nextRemoved !== currentRemoved) return !nextRemoved;
+      return JSON.stringify(nextRecord || {}).length >= JSON.stringify(currentRecord || {}).length;
+    }
+
+    function mergeRecords(records, normalizeRecord, keyFn = (record) => record && record.id) {
+      const map = new Map();
+      records.forEach((record) => {
+        const normalized = normalizeRecord(record);
+        if (!normalized) return;
+        const key = keyFn(normalized);
+        if (!key) return;
+        const existing = map.get(key);
+        if (!existing || isNewerRecord(normalized, existing)) {
+          map.set(key, normalized);
+        }
+      });
+      return [...map.values()];
+    }
+
+    function normalizeTransaction(tx) {
+      if (!tx || typeof tx !== "object") return null;
+      const normalized = deepClone(tx);
+      const amount = Number(normalized.amount);
+      const name = typeof normalized.name === "string" ? normalized.name.trim() : "";
+      if (!name || !Number.isFinite(amount)) return null;
+      const createdAt = normalized.createdAt || normalized.updatedAt || nowIso();
+      const updatedAt = normalized.updatedAt || createdAt;
+      const type = normalized.type === "out" ? "out" : "in";
+      return {
+        ...normalized,
+        id: normalized.id ? String(normalized.id) : createId("tx"),
+        type,
+        name,
+        amount,
+        status: type === "in" ? (normalized.status === "open" ? "open" : "paid") : "done",
+        date: normalized.date || createdAt.slice(0, 10),
+        createdAt,
+        updatedAt,
+        removedAt: normalized.removedAt || null
+      };
+    }
+
+    function normalizePeriod(period) {
+      if (!period || typeof period !== "object") return null;
+      const normalized = deepClone(period);
+      const createdAt = normalized.createdAt || normalized.updatedAt || nowIso();
+      const updatedAt = normalized.updatedAt || createdAt;
+      const transactions = mergeRecords(
+        Array.isArray(normalized.transactions) ? normalized.transactions : [],
+        normalizeTransaction
+      ).sort((a, b) => recordTimestamp(a) - recordTimestamp(b));
+      const derivedSumIn = transactions
+        .filter((tx) => tx.type === "in" && tx.status !== "open")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const derivedSumOut = transactions
+        .filter((tx) => tx.type === "out")
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const payoutAmount = Number(normalized.payoutAmount);
+      const balanceBefore = Number(normalized.balanceBefore);
+      const remaining = Number(normalized.remaining);
+      return {
+        ...normalized,
+        id: normalized.id ? String(normalized.id) : createId("period"),
+        date: normalized.date || createdAt.slice(0, 10),
+        payoutAmount: Number.isFinite(payoutAmount) ? payoutAmount : 0,
+        balanceBefore: Number.isFinite(balanceBefore) ? balanceBefore : derivedSumIn - derivedSumOut,
+        remaining: Number.isFinite(remaining)
+          ? remaining
+          : ((Number.isFinite(balanceBefore) ? balanceBefore : derivedSumIn - derivedSumOut) - (Number.isFinite(payoutAmount) ? payoutAmount : 0)),
+        carryOver: Number.isFinite(Number(normalized.carryOver)) ? Number(normalized.carryOver) : 0,
+        sumIn: Number.isFinite(Number(normalized.sumIn)) ? Number(normalized.sumIn) : derivedSumIn,
+        sumOut: Number.isFinite(Number(normalized.sumOut)) ? Number(normalized.sumOut) : derivedSumOut,
+        transactions,
+        createdAt,
+        updatedAt,
+        removedAt: normalized.removedAt || null
+      };
+    }
+
+    function normalizeTrashItem(item) {
+      if (!item || typeof item !== "object") return null;
+      const kind = item.kind === "payout" ? "payout" : "transaction";
+      const payload = kind === "payout" ? normalizePeriod(item.payload) : normalizeTransaction(item.payload);
+      if (!payload) return null;
+      return {
+        id: item.id ? String(item.id) : createId("trash"),
+        kind,
+        payload,
+        deletedAt: item.deletedAt || nowIso(),
+        updatedAt: item.updatedAt || item.deletedAt || nowIso()
+      };
+    }
+
+    function normalizeEvent(event) {
+      if (!event || typeof event !== "object" || !event.id) return null;
+      return {
+        ...event,
+        id: String(event.id),
+        at: event.at || nowIso()
+      };
+    }
+
+    function pickLatestValue(currentValue, currentTs, nextValue, nextTs) {
+      return toTimestamp(nextTs) > toTimestamp(currentTs) ? nextValue : currentValue;
+    }
+
+    function mergeStateData(currentState, incomingData) {
+      const current = { ...deepClone(defaultState), ...(currentState && typeof currentState === "object" ? deepClone(currentState) : {}) };
+      const incoming = { ...deepClone(defaultState), ...(incomingData && typeof incomingData === "object" ? deepClone(incomingData) : {}) };
+      return {
+        ...deepClone(defaultState),
+        currency: incoming.currency || current.currency || "EUR",
+        notes: pickLatestValue(
+          current.notes || "",
+          current.notesUpdatedAt || current.updatedAt,
+          incoming.notes || "",
+          incoming.notesUpdatedAt || incoming.updatedAt
+        ),
+        notesUpdatedAt: latestIso(current.notesUpdatedAt, incoming.notesUpdatedAt, current.updatedAt, incoming.updatedAt),
+        lastEvent: [current.lastEvent, incoming.lastEvent]
+          .map(normalizeEvent)
+          .filter(Boolean)
+          .sort((a, b) => recordTimestamp(b) - recordTimestamp(a))[0] || null,
+        periods: mergeRecords([...(current.periods || []), ...(incoming.periods || [])], normalizePeriod),
+        periodVault: mergeRecords([...(current.periodVault || []), ...(incoming.periodVault || [])], normalizePeriod),
+        carryOver: Number.isFinite(Number(incoming.carryOver)) ? Number(incoming.carryOver) : Number(current.carryOver) || 0,
+        trash: mergeRecords(
+          [...(current.trash || []), ...(incoming.trash || [])],
+          normalizeTrashItem,
+          (item) => item.id || `${item.kind}:${item.payload && item.payload.id ? item.payload.id : ""}:${item.deletedAt || ""}`
+        ),
+        transactions: mergeRecords([...(current.transactions || []), ...(incoming.transactions || [])], normalizeTransaction),
+        transactionVault: mergeRecords([...(current.transactionVault || []), ...(incoming.transactionVault || [])], normalizeTransaction),
+        updatedAt: latestIso(current.updatedAt, incoming.updatedAt, current.notesUpdatedAt, incoming.notesUpdatedAt)
+      };
+    }
+
+    function writeStateSnapshots(serializedState, forceSnapshot = false) {
+      const savedBackup = storage.set(backupStoreKey, serializedState);
+      const nowTs = Date.now();
+      if (!forceSnapshot && nowTs - lastSnapshotAt < SNAPSHOT_INTERVAL_MS) return savedBackup;
+      const existing = parseJsonSafely(storage.get(snapshotStoreKey));
+      const snapshots = Array.isArray(existing) ? existing.filter((entry) => entry && entry.data) : [];
+      const nextSnapshots = [
+        { at: nowIso(), data: JSON.parse(serializedState) },
+        ...snapshots
+      ].slice(0, MAX_STATE_SNAPSHOTS);
+      lastSnapshotAt = nowTs;
+      storage.set(snapshotStoreKey, JSON.stringify(nextSnapshots));
+      return savedBackup;
+    }
 
     let state = loadState();
 
@@ -2393,8 +2625,6 @@
     const ui = { mode: "in" };
     let editingId = null;
     let selectedMonthKey = "";
-    const TRASH_MAX_ITEMS = 300;
-    const TRASH_TTL_MS = 1000 * 60 * 60 * 24 * 30;
     const selection = {
       in: { active: false, ids: new Set() },
       out: { active: false, ids: new Set() }
@@ -2460,6 +2690,7 @@
       notesInput.value = state.notes || "";
       notesInput.addEventListener("input", () => {
         state.notes = notesInput.value;
+        state.notesUpdatedAt = nowIso();
         saveState();
       });
     }
@@ -2589,54 +2820,115 @@
     }
 
     function loadState() {
-      const stored = storage.get(storeKey);
       const notesFallback = storage.get("cashflow_notes");
-      if (!stored) {
-        const base = deepClone(defaultState);
-        if (notesFallback) base.notes = notesFallback;
-        return base;
-      }
-      try {
-        const parsed = JSON.parse(stored);
+      const storedSnapshots = parseJsonSafely(storage.get(snapshotStoreKey));
+      const candidates = [
+        storage.get(storeKey),
+        storage.get(backupStoreKey),
+        ...(Array.isArray(storedSnapshots) ? storedSnapshots.map((entry) => JSON.stringify(entry.data || null)) : [])
+      ];
+      for (const raw of candidates) {
+        const parsed = parseJsonSafely(raw);
+        if (!parsed || typeof parsed !== "object") continue;
         const merged = { ...deepClone(defaultState), ...parsed };
         if (!merged.notes && notesFallback) merged.notes = notesFallback;
         return merged;
-      } catch (error) {
-        const base = deepClone(defaultState);
-        if (notesFallback) base.notes = notesFallback;
-        return base;
       }
+      const base = deepClone(defaultState);
+      if (notesFallback) base.notes = notesFallback;
+      return base;
     }
 
     let remoteSyncTimer = null;
-    function saveState({ skipRemote = false } = {}) {
-      storage.set(storeKey, JSON.stringify(state));
+    function saveState({ skipRemote = false, forceSnapshot = false } = {}) {
+      state.updatedAt = nowIso();
+      normalizeState();
+      const serializedState = JSON.stringify(state);
+      const savedPrimary = storage.set(storeKey, serializedState);
+      const savedShadow = writeStateSnapshots(serializedState, forceSnapshot);
       storage.set("cashflow_notes", state.notes || "");
+      if (!savedPrimary && !savedShadow) {
+        setSyncStatus("error", "Speicherfehler");
+      }
       if (!skipRemote) scheduleRemoteSync();
     }
 
     function normalizeState() {
+      if (!state || typeof state !== "object") state = deepClone(defaultState);
       if (!Array.isArray(state.transactions)) state.transactions = [];
       if (!Array.isArray(state.periods)) state.periods = [];
+      if (!Array.isArray(state.transactionVault)) state.transactionVault = [];
+      if (!Array.isArray(state.periodVault)) state.periodVault = [];
       if (!Array.isArray(state.trash)) state.trash = [];
       if (typeof state.carryOver !== "number") state.carryOver = 0;
       if (typeof state.notes !== "string") state.notes = "";
-      if (state.lastEvent && typeof state.lastEvent !== "object") state.lastEvent = null;
+      if (typeof state.notesUpdatedAt !== "string") state.notesUpdatedAt = state.updatedAt || nowIso();
+      state.lastEvent = normalizeEvent(state.lastEvent);
+      state.trash = mergeRecords(state.trash, normalizeTrashItem);
+      state.periodVault = mergeRecords([
+        ...state.periodVault,
+        ...state.periods,
+        ...state.trash.filter((item) => item.kind === "payout").map((item) => item.payload)
+      ], normalizePeriod);
+      state.transactionVault = mergeRecords([
+        ...state.transactionVault,
+        ...state.transactions,
+        ...state.periodVault.flatMap((period) => period.transactions || []),
+        ...state.trash.flatMap((item) => {
+          if (item.kind === "transaction") return [item.payload];
+          return item.payload && Array.isArray(item.payload.transactions) ? item.payload.transactions : [];
+        })
+      ], normalizeTransaction);
+      const periodVaultMap = new Map(state.periodVault.map((period) => [period.id, period]));
+      const transactionVaultMap = new Map(state.transactionVault.map((tx) => [tx.id, tx]));
       state.trash = state.trash
         .map((item) => {
-          if (!item || typeof item !== "object") return null;
-          if (!item.id || !item.kind) return null;
-          if (!item.payload || typeof item.payload !== "object") return null;
-          return {
-            id: String(item.id),
-            kind: item.kind === "payout" ? "payout" : "transaction",
-            payload: item.payload,
-            deletedAt: item.deletedAt || new Date().toISOString()
-          };
-        })
-        .filter(Boolean)
-        .slice(0, TRASH_MAX_ITEMS);
+          if (item.kind === "payout") {
+            const period = periodVaultMap.get(item.payload.id) || item.payload;
+            return { ...item, payload: deepClone(period) };
+          }
+          const tx = transactionVaultMap.get(item.payload.id) || item.payload;
+          return { ...item, payload: deepClone(tx) };
+        });
       pruneTrash();
+      const payoutTrashMap = new Map();
+      state.trash
+        .filter((item) => item.kind === "payout" && item.payload && item.payload.id)
+        .forEach((item) => {
+          const existing = payoutTrashMap.get(item.payload.id);
+          if (!existing || toTimestamp(item.deletedAt) > toTimestamp(existing.deletedAt)) {
+            payoutTrashMap.set(item.payload.id, item);
+          }
+        });
+      state.periods = state.periodVault
+        .filter((period) => {
+          if (period.removedAt) return false;
+          const trashItem = payoutTrashMap.get(period.id);
+          if (!trashItem) return true;
+          return recordTimestamp(period) > toTimestamp(trashItem.deletedAt);
+        })
+        .sort((a, b) => recordTimestamp(a) - recordTimestamp(b));
+      const activePeriodTransactionIds = new Set(
+        state.periods.flatMap((period) => period.transactions || []).map((tx) => tx.id)
+      );
+      const trashedTransactionMap = new Map();
+      state.trash
+        .filter((item) => item.kind === "transaction" && item.payload && item.payload.id)
+        .forEach((item) => {
+          const existing = trashedTransactionMap.get(item.payload.id);
+          if (!existing || toTimestamp(item.deletedAt) > toTimestamp(existing.deletedAt)) {
+            trashedTransactionMap.set(item.payload.id, item);
+          }
+        });
+      state.transactions = state.transactionVault
+        .filter((tx) => {
+          if (tx.removedAt) return false;
+          if (activePeriodTransactionIds.has(tx.id)) return false;
+          const trashItem = trashedTransactionMap.get(tx.id);
+          if (!trashItem) return true;
+          return recordTimestamp(tx) > toTimestamp(trashItem.deletedAt);
+        })
+        .sort((a, b) => recordTimestamp(a) - recordTimestamp(b));
       syncCarryOverFromPeriods();
     }
 
@@ -2655,31 +2947,64 @@
       state.carryOver = Number.isFinite(nextCarryOver) ? nextCarryOver : 0;
     }
 
+    function upsertTransactionVault(tx, overrides = {}) {
+      const normalized = normalizeTransaction({ ...deepClone(tx || {}), ...overrides });
+      if (!normalized) return null;
+      state.transactionVault = mergeRecords([...(state.transactionVault || []), normalized], normalizeTransaction);
+      return normalized;
+    }
+
+    function upsertPeriodVault(period, overrides = {}) {
+      const normalized = normalizePeriod({ ...deepClone(period || {}), ...overrides });
+      if (!normalized) return null;
+      state.periodVault = mergeRecords([...(state.periodVault || []), normalized], normalizePeriod);
+      return normalized;
+    }
+
+    function markTransactionRemoved(txId) {
+      if (!txId) return;
+      const source = (state.transactionVault || []).find((tx) => tx.id === txId)
+        || (state.transactions || []).find((tx) => tx.id === txId)
+        || (state.trash || []).find((item) => item.kind === "transaction" && item.payload && item.payload.id === txId)?.payload;
+      if (!source) return;
+      upsertTransactionVault(source, {
+        removedAt: nowIso(),
+        updatedAt: nowIso()
+      });
+    }
+
+    function markPeriodRemoved(periodId) {
+      if (!periodId) return;
+      const source = (state.periodVault || []).find((period) => period.id === periodId)
+        || (state.periods || []).find((period) => period.id === periodId)
+        || (state.trash || []).find((item) => item.kind === "payout" && item.payload && item.payload.id === periodId)?.payload;
+      if (!source) return;
+      upsertPeriodVault(source, {
+        removedAt: nowIso(),
+        updatedAt: nowIso()
+      });
+    }
+
     function pruneTrash() {
       if (!Array.isArray(state.trash)) {
         state.trash = [];
         return;
       }
-      const cutoff = Date.now() - TRASH_TTL_MS;
-      state.trash = state.trash
-        .filter((item) => {
-          const ts = new Date(item.deletedAt || 0).getTime();
-          return Number.isFinite(ts) && ts >= cutoff;
-        })
-        .slice(0, TRASH_MAX_ITEMS);
+      state.trash = mergeRecords(state.trash, normalizeTrashItem);
     }
 
     function addTrashEntries(entries) {
       if (!Array.isArray(entries) || entries.length === 0) return [];
       if (!Array.isArray(state.trash)) state.trash = [];
-      const nowIso = new Date().toISOString();
+      const deletedAt = nowIso();
       const added = entries.map((entry) => ({
         id: createId("trash"),
         kind: entry.kind === "payout" ? "payout" : "transaction",
         payload: deepClone(entry.payload),
-        deletedAt: nowIso
+        deletedAt,
+        updatedAt: deletedAt
       }));
-      state.trash = [...added, ...state.trash].slice(0, TRASH_MAX_ITEMS);
+      state.trash = [...added, ...state.trash];
       return added.map((item) => item.id);
     }
 
@@ -2696,29 +3021,21 @@
         }
 
         if (item.kind === "transaction" && item.payload) {
-          const tx = deepClone(item.payload);
-          if (!tx.id || state.transactions.some((existing) => existing.id === tx.id)) {
-            tx.id = createId("tx");
-          }
-          state.transactions.push(tx);
+          const tx = upsertTransactionVault(item.payload, {
+            removedAt: null,
+            updatedAt: nowIso()
+          });
+          if (tx) state.transactions.push(tx);
           restored += 1;
           return;
         }
 
         if (item.kind === "payout" && item.payload) {
-          const period = deepClone(item.payload);
-          const periodTransactionIds = new Set(
-            (Array.isArray(period.transactions) ? period.transactions : [])
-              .map((tx) => tx && tx.id)
-              .filter(Boolean)
-          );
-          if (periodTransactionIds.size > 0) {
-            state.transactions = state.transactions.filter((tx) => !periodTransactionIds.has(tx.id));
-          }
-          if (!period.id || state.periods.some((existing) => existing.id === period.id)) {
-            period.id = createId("period");
-          }
-          state.periods.push(period);
+          const period = upsertPeriodVault(item.payload, {
+            removedAt: null,
+            updatedAt: nowIso()
+          });
+          if (period) state.periods.push(period);
           restored += 1;
           return;
         }
@@ -2727,7 +3044,7 @@
       });
 
       state.trash = keep;
-      syncCarryOverFromPeriods();
+      normalizeState();
       return restored;
     }
 
@@ -2898,10 +3215,11 @@
     async function syncRemoteState() {
       if (!REMOTE_ENABLED || !supabase || !remoteReady || isApplyingRemote) return;
       try {
+        normalizeState();
         await supabase.from("cashflow_states").upsert({
           team: TEAM_CODE,
           data: state,
-          updated_at: new Date().toISOString()
+          updated_at: nowIso()
         }, { onConflict: "team" });
         setSyncStatus("live");
       } catch (error) {
@@ -2911,9 +3229,10 @@
 
     function applyRemoteState(data) {
       isApplyingRemote = true;
-      state = { ...deepClone(defaultState), ...data };
+      state = mergeStateData(state, data);
       normalizeState();
       if (notesInput) notesInput.value = state.notes || "";
+      saveState({ skipRemote: true });
       isApplyingRemote = false;
       render();
       if (REMOTE_ENABLED) setSyncStatus("live");
@@ -2963,10 +3282,11 @@
         if (data && data.data) {
           applyRemoteState(data.data);
         } else if (!error || error.code === "PGRST116") {
+          normalizeState();
           await supabase.from("cashflow_states").upsert({
             team: TEAM_CODE,
             data: state,
-            updated_at: new Date().toISOString()
+            updated_at: nowIso()
           }, { onConflict: "team" });
         }
         remoteReady = true;
@@ -3360,11 +3680,12 @@
     function handleEntrySave() {
       const name = (nameInput.value || "").trim();
       const amount = parseAmount(amountInput.value || "");
-      const date = dateInput.value || new Date().toISOString().slice(0, 10);
+      const date = dateInput.value || nowIso().slice(0, 10);
       if (!name || !amount) {
         try { alert("Bitte Name und Betrag eingeben."); } catch (e) {}
         return;
       }
+      const stampedAt = nowIso();
 
       const entry = {
         id: createId("tx"),
@@ -3375,22 +3696,24 @@
           ? (openInput.checked ? "open" : "paid")
           : "done",
         date,
-        createdAt: new Date().toISOString()
+        createdAt: stampedAt,
+        updatedAt: stampedAt
       };
 
       state.transactions.push(entry);
+      upsertTransactionVault(entry);
       state.lastEvent = {
         id: entry.id,
         type: entry.type,
         name: entry.name,
         amount: entry.amount,
-        at: new Date().toISOString(),
+        at: stampedAt,
         sourceId: CLIENT_ID
       };
       saveState();
       notifyEntry(entry);
       entryForm.reset();
-      dateInput.value = new Date().toISOString().slice(0, 10);
+      dateInput.value = nowIso().slice(0, 10);
       openInput.checked = false;
       render();
       playCashSound(ui.mode);
@@ -3420,7 +3743,7 @@
     function handlePayoutSave() {
       const amount = parseAmount(payoutAmount.value);
       if (!amount) return;
-      const date = payoutDate.value || new Date().toISOString().slice(0, 10);
+      const date = payoutDate.value || nowIso().slice(0, 10);
       const paidIn = state.transactions.filter(tx => tx.type === "in" && tx.status !== "open");
       const openIn = state.transactions.filter(tx => tx.type === "in" && tx.status === "open");
       const outTx = state.transactions.filter(tx => tx.type === "out");
@@ -3436,6 +3759,7 @@
         const bDate = new Date(b.createdAt || `${b.date}T00:00:00`);
         return aDate - bDate;
       });
+      const stampedAt = nowIso();
       const period = {
         id: createId("period"),
         date,
@@ -3446,14 +3770,16 @@
         sumIn,
         sumOut,
         transactions: periodTransactions,
-        createdAt: new Date().toISOString()
+        createdAt: stampedAt,
+        updatedAt: stampedAt
       };
       state.periods.push(period);
+      upsertPeriodVault(period);
       syncCarryOverFromPeriods();
       state.transactions = openIn;
       payoutAmount.value = "";
-      payoutDate.value = new Date().toISOString().slice(0, 10);
-      saveState();
+      payoutDate.value = nowIso().slice(0, 10);
+      saveState({ forceSnapshot: true });
       render();
     }
 
@@ -3511,6 +3837,8 @@
       const entry = state.transactions.find(tx => tx.id === id);
       if (!entry || entry.type !== "in") return;
       entry.status = entry.status === "open" ? "paid" : "open";
+      entry.updatedAt = nowIso();
+      upsertTransactionVault(entry);
       saveState();
       render();
     });
@@ -3561,8 +3889,15 @@
           return;
         }
         if (btn.dataset.action === "purge-trash") {
+          const item = state.trash.find((entry) => entry.id === trashId);
+          if (item && item.kind === "transaction" && item.payload && item.payload.id) {
+            markTransactionRemoved(item.payload.id);
+          }
+          if (item && item.kind === "payout" && item.payload && item.payload.id) {
+            markPeriodRemoved(item.payload.id);
+          }
           state.trash = state.trash.filter((item) => item.id !== trashId);
-          saveState();
+          saveState({ forceSnapshot: true });
           render();
         }
       });
@@ -3571,8 +3906,16 @@
       trashClearAll.addEventListener("click", () => {
         if (!state.trash.length) return;
         if (!confirm("Papierkorb vollständig leeren?")) return;
+        state.trash.forEach((item) => {
+          if (item.kind === "transaction" && item.payload && item.payload.id) {
+            markTransactionRemoved(item.payload.id);
+          }
+          if (item.kind === "payout" && item.payload && item.payload.id) {
+            markPeriodRemoved(item.payload.id);
+          }
+        });
         state.trash = [];
-        saveState();
+        saveState({ forceSnapshot: true });
         render();
       });
     }
@@ -3621,7 +3964,7 @@
           state.transactions = state.transactions.filter(tx => !(tx.type === type && ids.has(tx.id)));
           const trashIds = addTrashEntries(removed.map((tx) => ({ kind: "transaction", payload: tx })));
           selection[type].ids.clear();
-          saveState();
+          saveState({ forceSnapshot: true });
           render();
           if (trashIds.length > 0) {
             openUndoToast(`${removed.length} Eintrag${removed.length === 1 ? "" : "e"} gelöscht.`, trashIds);
@@ -3652,7 +3995,7 @@
       if (index === -1) return;
       const removed = state.transactions.splice(index, 1)[0];
       const trashIds = removed ? addTrashEntries([{ kind: "transaction", payload: removed }]) : [];
-      saveState();
+      saveState({ forceSnapshot: true });
       closeEdit();
       render();
       if (trashIds.length > 0) openUndoToast("Eintrag gelöscht.", trashIds);
@@ -3674,6 +4017,8 @@
       } else {
         entry.status = "done";
       }
+      entry.updatedAt = nowIso();
+      upsertTransactionVault(entry);
       saveState();
       closeEdit();
       render();
@@ -3696,7 +4041,7 @@
       }
       const trashIds = removed ? addTrashEntries([{ kind: "payout", payload: removed }]) : [];
       syncCarryOverFromPeriods();
-      saveState();
+      saveState({ forceSnapshot: true });
       render();
       if (trashIds.length > 0) openUndoToast("Ausschüttung gelöscht.", trashIds);
     }
@@ -3960,10 +4305,11 @@
             return;
           }
           if (!confirm("Backup wirklich laden? Aktuelle Daten werden ersetzt.")) return;
-          state = { ...deepClone(defaultState), ...imported };
+          state = mergeStateData(deepClone(defaultState), imported);
+          state.notesUpdatedAt = state.notesUpdatedAt || nowIso();
           normalizeState();
           if (notesInput) notesInput.value = state.notes || "";
-          saveState();
+          saveState({ forceSnapshot: true });
           render();
           if (REMOTE_ENABLED) scheduleRemoteSync();
         } catch (error) {
