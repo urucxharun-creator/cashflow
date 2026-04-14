@@ -2989,26 +2989,8 @@
       });
     }
 
-    function buildVisibleTransactions() {
-      const visible = [...state.transactions];
-      const seen = new Set(visible.map((tx) => tx.id));
-      (state.periods || []).forEach((period) => {
-        (period && Array.isArray(period.transactions) ? period.transactions : []).forEach((tx) => {
-          if (!tx || !tx.id || seen.has(tx.id)) return;
-          seen.add(tx.id);
-          visible.push({
-            ...deepClone(tx),
-            archivedInPeriodId: period.id
-          });
-        });
-      });
-      return visible;
-    }
-
     function sortedTransactions(options = {}) {
-      const includeArchived = options.includeArchived !== false;
-      const items = includeArchived ? buildVisibleTransactions() : [...state.transactions];
-      return sortTransactionsByDate(items);
+      return sortTransactionsByDate(state.transactions);
     }
 
     function pruneSelection(type, ids) {
@@ -3021,20 +3003,18 @@
     function renderList(type, target) {
       const items = sortedTransactions().filter(tx => tx.type === type);
       const isSelecting = selection[type].active;
-      pruneSelection(type, items.filter(tx => !tx.archivedInPeriodId).map(tx => tx.id));
+      pruneSelection(type, items.map(tx => tx.id));
       target.innerHTML = items.map(tx => {
         const dateLabel = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
-        const meta = [dateLabel, tx.archivedInPeriodId ? "Abgerechnet" : ""].filter(Boolean).join(" · ");
-        const statusTag = tx.archivedInPeriodId
-          ? `<span class="tag settled" title="Bereits in einer Gewinnausschüttung enthalten">Abgerechnet</span>`
-          : type === "in"
+        const meta = dateLabel;
+        const statusTag = type === "in"
           ? `<button class="tag ${tx.status === "open" ? "open" : "paid"}" data-action="toggle-open" data-id="${tx.id}" aria-label="${tx.status === "open" ? "Offen" : "Bezahlt"}">${tx.status === "open" ? "Offen" : "Bezahlt"}</button>`
           : "";
-        const checkbox = isSelecting && !tx.archivedInPeriodId
+        const checkbox = isSelecting
           ? `<input class="select-box" type="checkbox" data-id="${tx.id}" ${selection[type].ids.has(tx.id) ? "checked" : ""} />`
           : "";
         return `
-          <div class="item${tx.archivedInPeriodId ? " archived" : ""}" data-id="${tx.id}" data-type="${tx.type}" data-archived="${tx.archivedInPeriodId ? "true" : "false"}">
+          <div class="item" data-id="${tx.id}" data-type="${tx.type}">
             <div class="item-main">
               ${checkbox}
               <div class="item-text">
@@ -3068,14 +3048,12 @@
       fullListTitle.textContent = title;
       fullListContent.innerHTML = items.map(tx => {
         const date = tx.date ? new Date(tx.date).toLocaleDateString("de-DE") : "";
-        const status = tx.archivedInPeriodId
-          ? "Abgerechnet"
-          : type === "in"
+        const status = type === "in"
           ? (tx.status === "open" ? "Offen" : "Bezahlt")
           : "";
         const meta = [date, status].filter(Boolean).join(" · ");
         return `
-          <div class="item${tx.archivedInPeriodId ? " archived" : ""}" data-type="${tx.type}">
+          <div class="item" data-type="${tx.type}">
             <div class="item-main">
               <div class="item-text">
                 <h4>${tx.name}</h4>
